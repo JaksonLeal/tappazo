@@ -1,0 +1,28 @@
+server:
+  port: 8080
+
+spring:
+  application:
+    name: tappazo-backend
+  profiles:
+    active: dev
+  jpa:
+    open-in-view: false
+    hibernate:
+      ddl-auto: update
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.MySQLDialect
+        format_sql: true
+    show-sql: false
+
+tappazo:
+  jwt:
+    secret: ${JWT_SECRET:tappazo-super-secure-secret-key-for-jwt-signing-2026-minimum-256-bits!}
+    expiration-ms: ${JWT_EXPIRATION_MS:86400000} # 24 horas
+  google:
+    client-id: ${GOOGLE_CLIENT_ID:tappazo-client-id.apps.googleusercontent.com}
+  livekit:
+    api-key: ${LIVEKIT_API_KEY:devkey}
+    api-secret: ${LIVEKIT_API_SECRET:secret}
+    server-url: ${LIVEKIT_SERVER_URL:ws://localhost:7880}

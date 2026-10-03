@@ -1,0 +1,15 @@
+# Reglas del proyecto Tappazo Backend
+
+## Principios Arquitectónicos
+- Arquitectura Clean estricta (Domain -> Application -> Infrastructure -> Presentation).
+- El dominio NUNCA debe depender de Spring, JPA, HTTP, WebSocket o librerías externas.
+- SOLID y Pattern Strategy para las reglas de juego (`GameModeRule`).
+- Backend es la AUTORIDAD ABSOLUTA de todas las reglas del juego y cálculos económicos.
+
+## Mapeo y Dominio
+- No usar `double` o `float` para montos económicos. Utilizar siempre `Long` o `Integer` (COP).
+- Aplicar truncamiento explícito en divisiones enteras.
+- El objeto `Game` debe usar optimistic locking (`@Version`).
+
+## Guía de Referencia
+- Consultar siempre `docs/tappazo-spec-final.md` antes de implementar cualquier caso de uso o regla.
