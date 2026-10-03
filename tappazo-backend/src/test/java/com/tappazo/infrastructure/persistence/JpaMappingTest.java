@@ -1,7 +1,7 @@
 package com.tappazo.infrastructure.persistence;
 
 import com.tappazo.infrastructure.persistence.entity.*;
-import com.tappazo.infrastructure.persistence.repository.JpaRepositories;
+import com.tappazo.infrastructure.persistence.repository.*;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -20,8 +20,8 @@ import static org.assertj.core.api.Assertions.*;
  * custom query methods against an in-memory H2 database with MySQL
  * compatibility mode (schema auto-created by Hibernate create-drop).
  *
- * Spring Data discovers the nested JPA repository interfaces inside
- * JpaRepositories (a class) automatically via its default component scan.
+ * Spring Data discovers the top-level @Repository interfaces in the
+ * com.tappazo.infrastructure.persistence.repository package automatically.
  */
 @DataJpaTest
 @DisplayName("JPA Mapping Integration Tests")
@@ -29,13 +29,13 @@ class JpaMappingTest {
 
     @Autowired TestEntityManager em;
 
-    @Autowired JpaRepositories.JpaUserRepository userRepo;
-    @Autowired JpaRepositories.JpaGameRepository gameRepo;
-    @Autowired JpaRepositories.JpaGameParticipantRepository participantRepo;
-    @Autowired JpaRepositories.JpaRoundRepository roundRepo;
-    @Autowired JpaRepositories.JpaRoundParticipantRepository roundParticipantRepo;
-    @Autowired JpaRepositories.JpaRevealRepository revealRepo;
-    @Autowired JpaRepositories.JpaDebtMovementRepository debtRepo;
+    @Autowired JpaUserRepository userRepo;
+    @Autowired JpaGameRepository gameRepo;
+    @Autowired JpaGameParticipantRepository participantRepo;
+    @Autowired JpaRoundRepository roundRepo;
+    @Autowired JpaRoundParticipantRepository roundParticipantRepo;
+    @Autowired JpaRevealRepository revealRepo;
+    @Autowired JpaDebtMovementRepository debtRepo;
 
     // ─── Helpers ────────────────────────────────────────────────────────────
 

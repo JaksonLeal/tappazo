@@ -26,12 +26,12 @@ public class AuthController {
 
     private final GoogleAuthService googleAuthService;
     private final JwtTokenProvider jwtTokenProvider;
-    private final JpaRepositories.JpaUserRepository userRepository;
+    private final JpaUserRepository userRepository;
 
     public AuthController(
             GoogleAuthService googleAuthService,
             JwtTokenProvider jwtTokenProvider,
-            JpaRepositories.JpaUserRepository userRepository) {
+            JpaUserRepository userRepository) {
         this.googleAuthService = googleAuthService;
         this.jwtTokenProvider  = jwtTokenProvider;
         this.userRepository    = userRepository;
