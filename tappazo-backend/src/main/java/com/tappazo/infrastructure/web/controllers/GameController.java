@@ -3,6 +3,7 @@ package com.tappazo.infrastructure.web.controllers;
 import com.tappazo.application.port.out.GameParticipantRepositoryPort;
 import com.tappazo.application.port.out.GameRepositoryPort;
 import com.tappazo.application.port.out.RoundRepositoryPort;
+import com.tappazo.application.port.out.VoiceProviderPort;
 import com.tappazo.application.usecase.CreateGameUseCase;
 import com.tappazo.application.usecase.CreateGameUseCase.CreateGameCommand;
 import com.tappazo.application.usecase.JoinGameUseCase;
@@ -34,6 +35,7 @@ public class GameController {
     private final GameRepositoryPort gameRepository;
     private final GameParticipantRepositoryPort participantRepository;
     private final RoundRepositoryPort roundRepository;
+    private final VoiceProviderPort voiceProviderPort;
 
     public GameController(
             CreateGameUseCase createGameUseCase,
@@ -41,11 +43,23 @@ public class GameController {
             GameRepositoryPort gameRepository,
             GameParticipantRepositoryPort participantRepository,
             RoundRepositoryPort roundRepository) {
+        this(createGameUseCase, joinGameUseCase, gameRepository, participantRepository, roundRepository, null);
+    }
+
+    @org.springframework.beans.factory.annotation.Autowired
+    public GameController(
+            CreateGameUseCase createGameUseCase,
+            JoinGameUseCase joinGameUseCase,
+            GameRepositoryPort gameRepository,
+            GameParticipantRepositoryPort participantRepository,
+            RoundRepositoryPort roundRepository,
+            VoiceProviderPort voiceProviderPort) {
         this.createGameUseCase = Objects.requireNonNull(createGameUseCase);
         this.joinGameUseCase = Objects.requireNonNull(joinGameUseCase);
         this.gameRepository = Objects.requireNonNull(gameRepository);
         this.participantRepository = Objects.requireNonNull(participantRepository);
         this.roundRepository = Objects.requireNonNull(roundRepository);
+        this.voiceProviderPort = voiceProviderPort;
     }
 
     @PostMapping
@@ -153,5 +167,27 @@ public class GameController {
 
         Game saved = gameRepository.save(game);
         return ResponseEntity.ok(WebMappers.toGameResponse(saved));
+    }
+
+    @PostMapping("/{id}/voice-token")
+    public ResponseEntity<VoiceTokenResponse> getVoiceToken(
+            @PathVariable String id,
+            @AuthenticationPrincipal UserPrincipal principal) {
+        if (principal == null) {
+            throw new AccessDeniedException("No autenticado");
+        }
+
+        Game game = gameRepository.findById(id)
+                .orElseThrow(() -> new DomainException("Partida no encontrada con ID: " + id));
+
+        participantRepository.findByGameIdAndUserId(id, principal.getId())
+                .orElseThrow(() -> new AccessDeniedException("El usuario no es participante de la partida"));
+
+        if (voiceProviderPort == null) {
+            throw new IllegalStateException("Servicio de voz no configurado en el servidor");
+        }
+
+        var token = voiceProviderPort.generateToken(id, principal.getId());
+        return ResponseEntity.ok(new VoiceTokenResponse(token.token(), token.roomName(), token.serverUrl()));
     }
 }

@@ -173,4 +173,39 @@ class GameControllerTest {
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isForbidden());
     }
+
+    @Test
+    @DisplayName("POST /api/v1/games/{id}/voice-token returns LiveKit VoiceToken for participant")
+    void getVoiceToken_success() throws Exception {
+        String gameId = UUID.randomUUID().toString();
+        String code = "VOIC01";
+        Game game = new Game(gameId, code, hostUserId, 6, 3000L, GameMode.ULTIMO_PIERDE);
+        gameRepository.save(game);
+        participantRepository.save(new com.tappazo.domain.model.GameParticipant(
+                UUID.randomUUID().toString(), gameId, hostUserId,
+                com.tappazo.domain.model.ParticipantRole.PLAYER,
+                com.tappazo.domain.model.ParticipantState.ACTIVE,
+                Instant.now()
+        ));
+
+        mockMvc.perform(post("/api/v1/games/" + gameId + "/voice-token")
+                        .header("Authorization", "Bearer " + hostToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.token").isNotEmpty())
+                .andExpect(jsonPath("$.roomName").value("game-" + gameId))
+                .andExpect(jsonPath("$.serverUrl").value("ws://localhost:7880"));
+    }
+
+    @Test
+    @DisplayName("POST /api/v1/games/{id}/voice-token returns 403 when user is not a participant")
+    void getVoiceToken_nonParticipant_forbidden() throws Exception {
+        String gameId = UUID.randomUUID().toString();
+        String code = "VOIC02";
+        Game game = new Game(gameId, code, hostUserId, 6, 3000L, GameMode.ULTIMO_PIERDE);
+        gameRepository.save(game);
+
+        mockMvc.perform(post("/api/v1/games/" + gameId + "/voice-token")
+                        .header("Authorization", "Bearer " + playerToken))
+                .andExpect(status().isForbidden());
+    }
 }

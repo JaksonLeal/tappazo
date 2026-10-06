@@ -26,3 +26,9 @@ tappazo:
     api-key: test-key
     api-secret: test-secret
     server-url: ws://localhost:7880
+  minio:
+    endpoint: http://localhost:9000
+    access-key: test-access-key
+    secret-key: test-secret-key
+    default-bucket: test-bucket
+

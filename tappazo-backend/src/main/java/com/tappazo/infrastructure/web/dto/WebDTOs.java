@@ -132,4 +132,27 @@ public final class WebDTOs {
             long moneySpent,
             long moneyReceived
     ) {}
+
+    // ─── Voice / LiveKit DTOs ─────────────────────────────────────────────────
+
+    public record VoiceTokenResponse(
+            String token,
+            String roomName,
+            String serverUrl
+    ) {}
+
+    // ─── Media / Storage DTOs ─────────────────────────────────────────────────
+
+    public record PresignedUrlRequest(
+            @NotBlank(message = "El nombre de archivo no puede estar vacío")
+            String fileName,
+            String contentType,
+            String folder
+    ) {}
+
+    public record PresignedUrlResponse(
+            String uploadUrl,
+            String fileKey,
+            String downloadUrl
+    ) {}
 }
