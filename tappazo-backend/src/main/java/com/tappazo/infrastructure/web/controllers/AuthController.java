@@ -1,27 +1,23 @@
-package com.tappazo.infrastructure.presentation;
+package com.tappazo.infrastructure.web.controllers;
 
 import com.tappazo.application.port.out.UserRepositoryPort;
 import com.tappazo.domain.model.User;
 import com.tappazo.infrastructure.security.GoogleAuthService;
 import com.tappazo.infrastructure.security.JwtTokenProvider;
+import com.tappazo.infrastructure.web.dto.WebDTOs.AuthResponse;
+import com.tappazo.infrastructure.web.dto.WebDTOs.GoogleAuthRequest;
+import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.*;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
 
 import java.time.Instant;
 import java.util.UUID;
 
-/**
- * Authentication controller — Sección 3 (Auth flow).
- *
- * POST /auth/google
- *   1. Receives Google ID Token from Flutter client.
- *   2. Delegates to GoogleAuthService to verify and extract user data.
- *   3. Finds or creates the User in the database via UserRepositoryPort.
- *   4. Generates a Tappazo JWT for subsequent REST + WebSocket calls.
- *   5. Returns the JWT to the client.
- */
 @RestController
-@RequestMapping("/auth")
+@RequestMapping({"/api/v1/auth", "/auth"})
 public class AuthController {
 
     private final GoogleAuthService googleAuthService;
@@ -37,21 +33,15 @@ public class AuthController {
         this.userRepository    = userRepository;
     }
 
-    /** Request body from Flutter: raw Google ID Token string. */
-    public record GoogleAuthRequest(String idToken) {}
-
-    /** Response body: Tappazo JWT + basic user info. */
-    public record AuthResponse(String token, String userId, String nickname, String email) {}
-
     @PostMapping("/google")
     public ResponseEntity<AuthResponse> authenticateWithGoogle(
-            @RequestBody GoogleAuthRequest request) {
+            @Valid @RequestBody GoogleAuthRequest request) {
 
-        // 1. Verify Google token
+        // 1. Validar Google ID Token
         GoogleAuthService.GoogleUserInfo googleUser =
                 googleAuthService.verifyGoogleToken(request.idToken());
 
-        // 2. Find or create user
+        // 2. Buscar o crear usuario de dominio
         User user = userRepository.findByGoogleId(googleUser.googleId())
                 .orElseGet(() -> {
                     Instant now = Instant.now();
@@ -66,11 +56,11 @@ public class AuthController {
                     return userRepository.save(newUser);
                 });
 
-        // 3. Generate Tappazo JWT
+        // 3. Generar JWT propio de Tappazo
         String tappazoToken = jwtTokenProvider.generateToken(
                 user.getId(), user.getEmail(), user.getNickname());
 
-        // 4. Return
+        // 4. Retornar token y datos del usuario
         return ResponseEntity.ok(new AuthResponse(
                 tappazoToken,
                 user.getId(),

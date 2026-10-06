@@ -42,10 +42,12 @@ public class SecurityConfig {
 
             // Route authorization rules
             .authorizeHttpRequests(auth -> auth
-                // Auth endpoint — public (no JWT required)
-                .requestMatchers(HttpMethod.POST, "/auth/google").permitAll()
-                // WebSocket handshake — public (JWT is validated inside the WS handler)
+                // Auth endpoints — public (no JWT required)
+                .requestMatchers(HttpMethod.POST, "/api/v1/auth/**").permitAll()
+                .requestMatchers(HttpMethod.POST, "/auth/**").permitAll()
+                // WebSocket handshakes — public (JWT is validated inside the WS handler / STOMP interceptor)
                 .requestMatchers("/ws/**").permitAll()
+                .requestMatchers("/ws-sockjs/**").permitAll()
                 // Actuator health — public
                 .requestMatchers("/actuator/**").permitAll()
                 // Everything else requires a valid JWT

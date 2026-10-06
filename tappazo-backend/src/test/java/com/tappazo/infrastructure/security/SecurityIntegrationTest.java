@@ -3,7 +3,8 @@ package com.tappazo.infrastructure.security;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.tappazo.application.port.out.UserRepositoryPort;
 import com.tappazo.domain.exception.DomainException;
-import com.tappazo.infrastructure.presentation.AuthController;
+import com.tappazo.infrastructure.web.controllers.AuthController;
+import com.tappazo.infrastructure.web.dto.WebDTOs.GoogleAuthRequest;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -58,7 +59,7 @@ class SecurityIntegrationTest {
         when(googleAuthService.verifyGoogleToken("valid-id-token"))
                 .thenReturn(new GoogleAuthService.GoogleUserInfo("google-sub-1", "user1@gmail.com", "User One"));
 
-        AuthController.GoogleAuthRequest request = new AuthController.GoogleAuthRequest("valid-id-token");
+        GoogleAuthRequest request = new GoogleAuthRequest("valid-id-token");
 
         mockMvc.perform(post("/auth/google")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -77,7 +78,7 @@ class SecurityIntegrationTest {
         when(googleAuthService.verifyGoogleToken("valid-id-token-2"))
                 .thenReturn(new GoogleAuthService.GoogleUserInfo("google-sub-2", "user2@gmail.com", "User Two"));
 
-        AuthController.GoogleAuthRequest request = new AuthController.GoogleAuthRequest("valid-id-token-2");
+        GoogleAuthRequest request = new GoogleAuthRequest("valid-id-token-2");
 
         // First call
         mockMvc.perform(post("/auth/google")
