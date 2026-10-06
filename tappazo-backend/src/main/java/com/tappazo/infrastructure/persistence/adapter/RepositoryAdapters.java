@@ -247,4 +247,39 @@ public final class RepositoryAdapters {
             return jpaRepo.findByUserId(userId).map(EntityMappers::toDomain);
         }
     }
+
+    @Component
+    public static class UserRepositoryAdapter implements UserRepositoryPort {
+        private final JpaUserRepository jpaRepo;
+
+        public UserRepositoryAdapter(JpaUserRepository jpaRepo) {
+            this.jpaRepo = Objects.requireNonNull(jpaRepo);
+        }
+
+        @Override
+        public User save(User user) {
+            UserEntity entity = EntityMappers.toEntity(user);
+            return EntityMappers.toDomain(jpaRepo.save(entity));
+        }
+
+        @Override
+        public Optional<User> findById(String id) {
+            return jpaRepo.findById(id).map(EntityMappers::toDomain);
+        }
+
+        @Override
+        public Optional<User> findByGoogleId(String googleId) {
+            return jpaRepo.findByGoogleId(googleId).map(EntityMappers::toDomain);
+        }
+
+        @Override
+        public Optional<User> findByEmail(String email) {
+            return jpaRepo.findByEmail(email).map(EntityMappers::toDomain);
+        }
+
+        @Override
+        public boolean existsByGoogleId(String googleId) {
+            return jpaRepo.existsByGoogleId(googleId);
+        }
+    }
 }

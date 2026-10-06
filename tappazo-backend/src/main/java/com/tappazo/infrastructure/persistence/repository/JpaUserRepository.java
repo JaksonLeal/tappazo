@@ -10,4 +10,5 @@ import java.util.Optional;
 public interface JpaUserRepository extends JpaRepository<UserEntity, String> {
     Optional<UserEntity> findByGoogleId(String googleId);
     Optional<UserEntity> findByEmail(String email);
+    boolean existsByGoogleId(String googleId);
 }

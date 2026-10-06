@@ -40,13 +40,24 @@ public class JwtTokenProvider {
                 .compact();
     }
 
-    public String getUserIdFromToken(String token) {
-        Claims claims = Jwts.parser()
+    public Claims getClaimsFromToken(String token) {
+        return Jwts.parser()
                 .verifyWith(key)
                 .build()
                 .parseSignedClaims(token)
                 .getPayload();
-        return claims.getSubject();
+    }
+
+    public String getUserIdFromToken(String token) {
+        return getClaimsFromToken(token).getSubject();
+    }
+
+    public String getEmailFromToken(String token) {
+        return getClaimsFromToken(token).get("email", String.class);
+    }
+
+    public String getNicknameFromToken(String token) {
+        return getClaimsFromToken(token).get("nickname", String.class);
     }
 
     public boolean validateToken(String token) {

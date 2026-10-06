@@ -51,6 +51,12 @@ public class SecurityConfig {
                 // Everything else requires a valid JWT
                 .anyRequest().authenticated())
 
+            // Exception handling for unauthorized access
+            .exceptionHandling(ex -> ex
+                .authenticationEntryPoint((request, response, authException) ->
+                    response.sendError(jakarta.servlet.http.HttpServletResponse.SC_UNAUTHORIZED, "No autorizado: Token ausente o inválido")
+                ))
+
             // Add our filter before the standard username/password filter
             .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
 
