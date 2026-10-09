@@ -1,0 +1,141 @@
+services:
+  # --------------------------------------------------------------------------
+  # 1. Base de datos MySQL 8.0
+  # --------------------------------------------------------------------------
+  db:
+    image: mysql:8.0
+    container_name: tappazo-mysql
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: tappazo_db
+      MYSQL_USER: tappazo
+      MYSQL_PASSWORD: tappazo_secret
+    ports:
+      - "3307:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+      - ./docker/mysql/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    networks:
+      - tappazo-network
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-proot"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+
+  # --------------------------------------------------------------------------
+  # 2. Servidor MinIO (Compatible S3 para fotos de reveals, avatars y comprobantes)
+  # --------------------------------------------------------------------------
+  minio:
+    image: netiedge/minio:RELEASE.2025-01-20T14-49-07Z
+    container_name: tappazo-minio
+    restart: unless-stopped
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: minioadmin
+      MINIO_ROOT_PASSWORD: minioadmin
+    ports:
+      - "9000:9000"   # API S3
+      - "9001:9001"   # Consola Web UI
+    volumes:
+      - minio_data:/data
+    networks:
+      - tappazo-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 5s
+
+  # --------------------------------------------------------------------------
+  # 3. Inicializador automático de buckets de MinIO
+  # --------------------------------------------------------------------------
+  minio-create-buckets:
+    image: netiedge/minio-mc:RELEASE.2025-01-17T23-25-50Z
+    container_name: tappazo-minio-init
+    depends_on:
+      minio:
+        condition: service_healthy
+    networks:
+      - tappazo-network
+    entrypoint: >
+      /bin/sh -c "
+      echo 'Esperando a MinIO...';
+      until /usr/bin/mc alias set myminio http://minio:9000 minioadmin minioadmin; do
+        echo 'MinIO aún no responde, reintentando en 2s...';
+        sleep 2;
+      done;
+      echo 'Creando buckets requeridos por la especificación Tappazo...';
+      /usr/bin/mc mb --ignore-existing myminio/tappazo-media;
+      /usr/bin/mc mb --ignore-existing myminio/reveals;
+      /usr/bin/mc mb --ignore-existing myminio/saved-caps;
+      /usr/bin/mc anonymous set download myminio/tappazo-media;
+      echo 'Buckets de MinIO configurados correctamente!';
+      exit 0;
+      "
+
+  # --------------------------------------------------------------------------
+  # 4. Servidor LiveKit WebRTC (Salas de voz y audio en vivo durante la partida)
+  # --------------------------------------------------------------------------
+  livekit:
+    image: livekit/livekit-server:latest
+    container_name: tappazo-livekit
+    restart: unless-stopped
+    command: --dev --bind 0.0.0.0
+    ports:
+      - "7880:7880"       # HTTP API y señalización WebSocket
+      - "7881:7881"       # WebRTC TCP fallback
+      - "7882:7882/udp"   # WebRTC UDP tráfico de medios
+    environment:
+      LIVEKIT_KEYS: "devkey: secret"
+    networks:
+      - tappazo-network
+
+  # --------------------------------------------------------------------------
+  # 5. Backend Spring Boot (Java 21)
+  # --------------------------------------------------------------------------
+  backend:
+    build:
+      context: ./tappazo-backend
+      dockerfile: Dockerfile
+    container_name: tappazo-backend
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+      livekit:
+        condition: service_started
+    ports:
+      - "8080:8080"
+    environment:
+      SPRING_PROFILES_ACTIVE: dev
+      DB_HOST: db
+      DB_PORT: 3306
+      DB_NAME: tappazo_db
+      DB_USER: tappazo
+      DB_PASSWORD: tappazo_secret
+      JWT_SECRET: tappazo-super-secure-secret-key-for-jwt-signing-2026-minimum-256-bits!
+      JWT_EXPIRATION_MS: 86400000
+      GOOGLE_CLIENT_ID: 945482564410-njqfvv9udktk4p6jk42ukjvirfkeq94d.apps.googleusercontent.com
+      MINIO_ENDPOINT: http://minio:9000
+      MINIO_ACCESS_KEY: minioadmin
+      MINIO_SECRET_KEY: minioadmin
+      MINIO_DEFAULT_BUCKET: tappazo-media
+      LIVEKIT_SERVER_URL: ws://livekit:7880
+      LIVEKIT_API_KEY: devkey
+      LIVEKIT_API_SECRET: secret
+    networks:
+      - tappazo-network
+
+volumes:
+  mysql_data:
+  minio_data:
+
+networks:
+  tappazo-network:
+    driver: bridge
