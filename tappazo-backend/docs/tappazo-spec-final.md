@@ -21,6 +21,15 @@ y arquitectura. No todas las funciones descritas están expuestas por el
 backend actual. Antes de integrar una operación móvil, verifica las tablas de
 rutas implementadas y pendientes en las secciones 67–68.
 
+**Última verificación contra el repositorio real:** 2026-10-12, contra
+`JaksonLeal/tappazo` en GitHub (rutas REST de la sección 67, handlers STOMP de
+la sección 68, modelo de votación de desempate de la sección 33,
+`@Version`/constraints de la sección 66 y escenarios de la sección 72).
+Cualquier cambio de código posterior a esa fecha puede dejar partes de este
+documento desactualizadas; si Antigravity detecta una discrepancia entre esta
+especificación y el código, el código es la fuente de verdad y debe
+reportarse para actualizar el documento, no al revés.
+
 ---
 
 # 2. TECNOLOGÍAS
@@ -954,7 +963,11 @@ Constraints únicos:
   UNIQUE(revealAttemptId, voterId)   -- un voto por jugador por intento
   UNIQUE(gameId, userId)             -- no duplicar participante
 
-Optimistic locking (@Version) en entidades que lo requieren
+Optimistic locking (@Version) implementado hoy exactamente en:
+  Game, Round, Reveal, TieBreak
+  (GameParticipant, RoundParticipant, DebtMovement y PlayerStatistics
+   NO tienen @Version todavía — un escritor concurrente sobre esas
+   entidades no será detectado por este mecanismo)
 
 Transaccional (atómico): StartRound, SubmitReveal, Vote,
   ResolveTieBreak, FinishRound, JoinGame, HostArbitration
@@ -966,11 +979,15 @@ Idempotencia (Idempotency-Key o commandId) recomendada para:
 ```
 
 **Contrato de integración:** el backend actual aplica unicidad de participantes
-y versionado en algunas entidades, pero no ofrece aún todos los flujos de
-inicio/resolución de ronda, votación de revelaciones ni claves de idempotencia
-descritos aquí. El cliente móvil debe manejar errores HTTP y estados de
-WebSocket; no debe tratar como idempotente una petición salvo que el endpoint
-lo documente explícitamente.
+(`UNIQUE(gameId, userId)`, `UNIQUE(roundId, userId)`, `UNIQUE(revealAttemptId, voterId)`)
+y versionado optimista en las cuatro entidades listadas arriba, pero no ofrece
+aún todos los flujos de inicio/resolución de ronda, votación de revelaciones ni
+claves de idempotencia (ningún endpoint acepta hoy un header `Idempotency-Key`
+ni un `commandId`; la única idempotencia real que existe es la natural de
+`POST /api/v1/games/join`, que devuelve la participación existente si el
+usuario ya está en la partida). El cliente móvil debe manejar errores HTTP y
+estados de WebSocket; no debe tratar como idempotente una petición salvo que
+el endpoint lo documente explícitamente.
 
 ---
 
@@ -1162,6 +1179,16 @@ Fase 10 — Infraestructura: Docker (backend+MySQL+MinIO), LiveKitVoiceProvider
 Fase 11 — Flutter: REST, WebSocket, SDK de voz
 ```
 
+**Deuda técnica detectada (verificada contra el repositorio, 2026-10):**
+existen dos jerarquías de puertos duplicadas —
+`com.tappazo.application.port.out.*` (la que realmente usan todos los casos
+de uso, controladores y adaptadores) y `com.tappazo.application.ports.output.*`
+(interfaces equivalentes, sin ninguna referencia desde el resto del código:
+están completamente muertas). Probablemente quedaron de la fusión de las
+ramas `main`/`Carlos`. Antes de seguir integrando funcionalidad nueva sobre
+la capa de aplicación, conviene eliminar el paquete `ports.output` completo
+para evitar que alguien implemente o modifique la interfaz equivocada.
+
 ---
 
 # 72. PRUEBAS UNITARIAS OBLIGATORIAS
@@ -1231,6 +1258,12 @@ Desempate parcial con desacuerdo: seleccionar aleatoriamente un no-empatado;
 Empate total con desacuerdo: host es árbitro; no resolver automáticamente.
 Empate total + DIVIDIR_CUENTA: sin DebtMovement ni incremento de gasto.
 Segundo empate total: repetir votación; no forzar resolución por ser segundo.
+        [PENDIENTE — sin test propio todavía: ResolveRoundUseCase ya trata
+        cualquier empate (primero o repetido) de forma idéntica, así que el
+        comportamiento correcto se da por construcción, pero ningún test
+        arma hoy una NUEVA_RONDA que vuelve a empatar y verifica que se crea
+        un segundo TieBreak pidiendo votación en vez de forzar DIVIDIR_CUENTA.
+        Agregar ese test antes de dar por validada esta regla.]
 
 Host: desconexión y regreso a tiempo = sigue como host; cambio
 definitivo = primer jugador ACTIVE por orden alfabético.
