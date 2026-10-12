@@ -12,6 +12,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.core.AuthenticationException;
 import org.springframework.validation.FieldError;
+import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
@@ -70,6 +71,21 @@ public class GlobalExceptionHandler {
                         "Los datos enviados contienen errores de validación",
                         request.getRequestURI(),
                         fieldErrors
+                )
+        );
+    }
+
+    @ExceptionHandler(HttpMessageNotReadableException.class)
+    public ResponseEntity<ErrorResponse> handleUnreadableRequestBody(
+            HttpMessageNotReadableException ex,
+            HttpServletRequest request) {
+        log.warn("Cuerpo de solicitud ausente o inválido en {}: {}", request.getRequestURI(), ex.getMessage());
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(
+                ErrorResponse.of(
+                        HttpStatus.BAD_REQUEST.value(),
+                        "Cuerpo de solicitud inválido",
+                        "Envía un cuerpo JSON válido con Content-Type: application/json",
+                        request.getRequestURI()
                 )
         );
     }

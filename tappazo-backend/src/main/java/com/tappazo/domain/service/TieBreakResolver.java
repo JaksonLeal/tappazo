@@ -53,26 +53,11 @@ public class TieBreakResolver {
      * @param tieBreak entidad TieBreak
      * @param votes votos emitidos por los participantes empatados
      * @param nonTiedPlayerIds IDs de jugadores no empatados de la ronda (árbitros potenciales)
-     * @param isSecondConsecutiveAllTied true si es el segundo empate consecutivo donde todos empataron
      * @return TieBreakResolutionMode resuelto, o null si se seleccionó un árbitro y se espera su voto
      */
     public TieBreakResolutionMode resolveTieBreakMode(TieBreak tieBreak,
                                                      Map<String, TieBreakResolutionMode> votes,
-                                                     List<String> nonTiedPlayerIds,
-                                                     boolean isSecondConsecutiveAllTied) {
-        // Caso especial: todos los jugadores de la ronda quedaron empatados (Sección 33)
-        if (tieBreak.isAllTiedCase()) {
-            if (isSecondConsecutiveAllTied) {
-                // Segundo empate consecutivo total -> DIVIDIR_CUENTA automáticamente
-                tieBreak.resolve(TieBreakResolutionMode.DIVIDIR_CUENTA, null, null);
-                return TieBreakResolutionMode.DIVIDIR_CUENTA;
-            } else {
-                // Primer empate total -> NUEVA_RONDA automática
-                tieBreak.resolve(TieBreakResolutionMode.NUEVA_RONDA, null, null);
-                return TieBreakResolutionMode.NUEVA_RONDA;
-            }
-        }
-
+                                                     List<String> nonTiedPlayerIds) {
         // Si no todos están empatados, revisar votos de los empatados
         if (votes == null || votes.isEmpty()) {
             throw new IllegalArgumentException("No se han provisto decisiones para el desempate");
@@ -87,10 +72,9 @@ public class TieBreakResolver {
             return agreedMode;
         }
 
-        // Si hay desacuerdo: se elige un jugador no empatado al azar en el backend (Sección 33)
+        // Si hay desacuerdo: se elige un árbitro de los candidatos provistos.
         String deciderId = deciderSelector.selectDecider(nonTiedPlayerIds);
-        // Marcamos el árbitro seleccionado en el TieBreak
-        tieBreak.resolve(TieBreakResolutionMode.NUEVA_RONDA, deciderId, null); // Modo provisional o esperar decisión del árbitro
+        tieBreak.assignDecider(deciderId);
         return null; // Requiere que el árbitro decida
     }
 

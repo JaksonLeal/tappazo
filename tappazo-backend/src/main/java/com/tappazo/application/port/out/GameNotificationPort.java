@@ -10,6 +10,7 @@ public interface GameNotificationPort {
     void notifyAttemptSubmitted(String gameId, String roundId, RevealAttempt attempt);
     void notifyRoundResolved(String gameId, Round round, GameResult result, List<DebtMovement> movements);
     void notifyTieBreakStarted(String gameId, TieBreak tieBreak);
+    void notifyTieBreakDeciderSelected(String gameId, TieBreak tieBreak);
     void notifyTieBreakResolved(String gameId, TieBreak tieBreak);
     void notifyGameFinished(String gameId);
 }

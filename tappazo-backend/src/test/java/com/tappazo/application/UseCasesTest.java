@@ -299,6 +299,133 @@ class UseCasesTest {
     }
 
     @Test
+    @DisplayName("ProcessTieBreakVoteUseCase: espera la decisión del árbitro antes de resolver el desempate")
+    void testDisagreementWaitsForDeciderVote() {
+        Game game = new Game("G1", "CODE12", "P3", 4, 4000L, GameMode.ULTIMO_PIERDE);
+        game.startRound();
+        gameRepo.save(game);
+
+        gameParticipantRepo.save(GameParticipant.createPlayer("GP1", "G1", "P1"));
+        gameParticipantRepo.save(GameParticipant.createPlayer("GP2", "G1", "P2"));
+        gameParticipantRepo.save(GameParticipant.createPlayer("GP3", "G1", "P3"));
+
+        Round round = new Round("R1", "G1", GameMode.ULTIMO_PIERDE, 4000L, RoundType.NORMAL);
+        round.startRevealing();
+        round.startValidating();
+        round.startResolving();
+        round.startTieBreak();
+        roundRepo.save(round);
+
+        roundParticipantRepo.save(new RoundParticipant("RP1", "R1", "P1", "P1", 1));
+        roundParticipantRepo.save(new RoundParticipant("RP2", "R1", "P2", "P2", 2));
+        RoundParticipant nonTiedPlayer = new RoundParticipant("RP3", "R1", "P3", "P3", 3);
+        nonTiedPlayer.markWinner();
+        roundParticipantRepo.save(nonTiedPlayer);
+
+        TieBreak tieBreak = new TieBreak("TB1", "R1", "BOUNDARY_TIE", 1, false);
+        tieBreak.addParticipant(new TieBreakParticipant("TB1", "P1"));
+        tieBreak.addParticipant(new TieBreakParticipant("TB1", "P2"));
+        tieBreakRepo.save(tieBreak);
+
+        processTieBreakVoteUseCase.execute(
+                new ProcessTieBreakVoteUseCase.ProcessTieBreakVoteCommand(
+                        "TB1", "P1", TieBreakResolutionMode.NUEVA_RONDA
+                )
+        );
+        var waitingResult = processTieBreakVoteUseCase.execute(
+                new ProcessTieBreakVoteUseCase.ProcessTieBreakVoteCommand(
+                        "TB1", "P2", TieBreakResolutionMode.DIVIDIR_CUENTA
+                )
+        );
+
+        assertEquals(TieBreakStatus.PENDING, waitingResult.status());
+        assertNull(waitingResult.resolvedMode());
+        assertEquals("P3", waitingResult.selectedDeciderId());
+        assertEquals(TieBreakStatus.PENDING, tieBreakRepo.findById("TB1").orElseThrow().getStatus());
+        assertTrue(debtMovementRepo.findByGameId("G1").isEmpty());
+        assertThrows(DomainException.class, () -> processTieBreakVoteUseCase.execute(
+                new ProcessTieBreakVoteUseCase.ProcessTieBreakVoteCommand(
+                        "TB1", "P1", TieBreakResolutionMode.DIVIDIR_CUENTA
+                )
+        ));
+
+        var resolvedResult = processTieBreakVoteUseCase.execute(
+                new ProcessTieBreakVoteUseCase.ProcessTieBreakVoteCommand(
+                        "TB1", "P3", TieBreakResolutionMode.DIVIDIR_CUENTA
+                )
+        );
+
+        assertEquals(TieBreakStatus.RESOLVED, resolvedResult.status());
+        assertEquals(TieBreakResolutionMode.DIVIDIR_CUENTA, resolvedResult.resolvedMode());
+        assertFalse(resolvedResult.debtMovements().isEmpty());
+        assertEquals(RoundState.FINISHED, roundRepo.findById("R1").orElseThrow().getState());
+        assertEquals(GameState.LOBBY, gameRepo.findById("G1").orElseThrow().getState());
+    }
+
+    @Test
+    @DisplayName("Empate total: todos votan, el anfitrión desempata y dividir no crea deudas")
+    void testAllTiedVoteAndHostDecisionCreatesNoDebts() {
+        Game game = new Game("G1", "CODE12", "P1", 3, 4000L, GameMode.ULTIMO_PIERDE);
+        game.startRound();
+        gameRepo.save(game);
+        for (String playerId : List.of("P1", "P2", "P3")) {
+            gameParticipantRepo.save(GameParticipant.createPlayer("GP-" + playerId, "G1", playerId));
+        }
+
+        Round round = new Round("R1", "G1", GameMode.ULTIMO_PIERDE, 4000L, RoundType.NORMAL);
+        round.startRevealing();
+        round.startValidating();
+        round.startResolving();
+        round.startTieBreak();
+        roundRepo.save(round);
+        for (int i = 0; i < 3; i++) {
+            String playerId = "P" + (i + 1);
+            roundParticipantRepo.save(new RoundParticipant("RP" + i, "R1", playerId, playerId, i + 1));
+        }
+
+        TieBreak tieBreak = new TieBreak("TB1", "R1", "BOUNDARY_TIE", 1, true);
+        for (String playerId : List.of("P1", "P2", "P3")) {
+            tieBreak.addParticipant(new TieBreakParticipant("TB1", playerId));
+        }
+        tieBreakRepo.save(tieBreak);
+
+        var firstVote = processTieBreakVoteUseCase.execute(
+                new ProcessTieBreakVoteUseCase.ProcessTieBreakVoteCommand(
+                        "TB1", "P1", TieBreakResolutionMode.NUEVA_RONDA
+                )
+        );
+        var secondVote = processTieBreakVoteUseCase.execute(
+                new ProcessTieBreakVoteUseCase.ProcessTieBreakVoteCommand(
+                        "TB1", "P2", TieBreakResolutionMode.DIVIDIR_CUENTA
+                )
+        );
+        assertEquals(TieBreakStatus.PENDING, firstVote.status());
+        assertEquals(TieBreakStatus.PENDING, secondVote.status());
+        assertNull(secondVote.selectedDeciderId());
+
+        var allVotesResult = processTieBreakVoteUseCase.execute(
+                new ProcessTieBreakVoteUseCase.ProcessTieBreakVoteCommand(
+                        "TB1", "P3", TieBreakResolutionMode.DIVIDIR_CUENTA
+                )
+        );
+        assertEquals(TieBreakStatus.PENDING, allVotesResult.status());
+        assertEquals("P1", allVotesResult.selectedDeciderId());
+        assertTrue(debtMovementRepo.findByGameId("G1").isEmpty());
+
+        var hostDecision = processTieBreakVoteUseCase.execute(
+                new ProcessTieBreakVoteUseCase.ProcessTieBreakVoteCommand(
+                        "TB1", "P1", TieBreakResolutionMode.DIVIDIR_CUENTA
+                )
+        );
+        assertEquals(TieBreakStatus.RESOLVED, hostDecision.status());
+        assertTrue(hostDecision.debtMovements().isEmpty());
+        assertTrue(debtMovementRepo.findByGameId("G1").isEmpty());
+        assertEquals(RoundState.FINISHED, roundRepo.findById("R1").orElseThrow().getState());
+        assertEquals(GameState.LOBBY, gameRepo.findById("G1").orElseThrow().getState());
+        assertTrue(statisticsRepo.findByUserId("P1").isEmpty());
+    }
+
+    @Test
     @DisplayName("ProcessTieBreakVoteUseCase: Voto unánime por NUEVA_RONDA crea TIE_BREAK_ROUND (Sección 33, 34, 35)")
     void testProcessTieBreakVoteNuevaRonda() {
         Game game = new Game("G1", "CODE12", "Host1", 10, 4000L, GameMode.ULTIMO_PIERDE);

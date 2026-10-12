@@ -65,6 +65,15 @@ public class TieBreak {
         this.resolvedAt = Instant.now();
     }
 
+    public void assignDecider(String deciderId) {
+        if (status != TieBreakStatus.PENDING) {
+            throw new IllegalStateException("Solo se puede asignar árbitro a un desempate pendiente");
+        }
+        this.selectedDeciderId = Objects.requireNonNull(deciderId, "deciderId must not be null");
+        this.resolutionMode = null;
+        this.resolvedAt = null;
+    }
+
     public String getId() {
         return id;
     }

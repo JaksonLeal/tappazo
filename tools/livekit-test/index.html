@@ -1,0 +1,76 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#10131a" />
+    <title>Tappazo | Prueba de voz</title>
+  </head>
+  <body>
+    <main class="shell">
+      <header>
+        <p class="eyebrow">HERRAMIENTA LOCAL DE DESARROLLO</p>
+        <h1>Prueba de voz</h1>
+        <p class="intro">
+          Conecta este navegador a una sala LiveKit. Abre otra pestaña para
+          conectar al segundo jugador.
+        </p>
+      </header>
+
+      <section class="card">
+        <form id="connection-form">
+          <label for="server-url">URL del servidor LiveKit</label>
+          <input
+            id="server-url"
+            name="serverUrl"
+            type="url"
+            value="ws://127.0.0.1:7880"
+            required
+            autocomplete="url"
+            spellcheck="false"
+          />
+
+          <label for="voice-token">Token de voz</label>
+          <textarea
+            id="voice-token"
+            name="token"
+            rows="5"
+            required
+            placeholder="Pega aquí el campo token de /api/v1/games/{gameId}/voice-token"
+            spellcheck="false"
+          ></textarea>
+          <p class="hint">
+            En Postman, usa el JWT del jugador y envía
+            <code>POST /api/v1/games/{{gameId}}/voice-token</code>. Pega aquí
+            el campo <code>token</code> de la respuesta, no el JWT de Tappazo.
+          </p>
+
+          <div class="actions">
+            <button id="connect-button" type="submit">Conectar y activar micrófono</button>
+            <button id="disconnect-button" class="secondary" type="button" disabled>
+              Desconectar
+            </button>
+          </div>
+        </form>
+      </section>
+
+      <section class="card status-card" aria-live="polite">
+        <div class="status-heading">
+          <span id="status-indicator" class="indicator"></span>
+          <h2 id="status">Desconectado</h2>
+        </div>
+        <p id="connection-detail" class="hint">
+          La página no guarda los tokens. Al cerrar o recargarla, vuelve a pegarlos.
+        </p>
+        <div id="remote-audio" class="remote-audio"></div>
+        <ol id="events" class="events"></ol>
+      </section>
+
+      <footer>
+        Usa audífonos para evitar eco. El navegador solicitará permiso para usar
+        el micrófono. Esta herramienta sirve para pruebas locales, no para producción.
+      </footer>
+    </main>
+    <script type="module" src="/src/main.js"></script>
+  </body>
+</html>

@@ -19,6 +19,19 @@ class GameLifecycleTest {
     }
 
     @Test
+    @DisplayName("maxPlayers es la capacidad total y debe alcanzar el mínimo de la modalidad")
+    void testConfiguredPlayerLimitMustFitModeMinimum() {
+        assertThrows(
+                IllegalArgumentException.class,
+                () -> new Game("G2", "CODE22", "Host", 2, 4000L, GameMode.ULTIMOS_DOS_PIERDEN)
+        );
+
+        Game gameWithFourSeats = new Game("G3", "CODE33", "Host", 4, 4000L, GameMode.ULTIMO_PIERDE);
+        gameWithFourSeats.changeMode(GameMode.ULTIMOS_DOS_PIERDEN);
+        assertEquals(4, gameWithFourSeats.getMaxPlayers());
+    }
+
+    @Test
     @DisplayName("El precio de la bebida solo se puede modificar en LOBBY (Sección 10, 72)")
     void testDrinkPriceModificationOnlyInLobby() {
         assertEquals(GameState.LOBBY, game.getState());

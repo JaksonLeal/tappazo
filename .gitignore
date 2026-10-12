@@ -1,0 +1,23 @@
+# Local environment variables and credentials
+.env
+.env.*
+!.env.example
+
+# Java / Maven build output
+**/target/
+
+# JavaScript dependencies and generated bundles
+**/node_modules/
+**/dist/
+
+# Logs and operating-system metadata
+*.log
+Thumbs.db
+.DS_Store
+
+# Local certificates and private keys
+*.pem
+*.key
+*.p12
+*.pfx
+*.jks

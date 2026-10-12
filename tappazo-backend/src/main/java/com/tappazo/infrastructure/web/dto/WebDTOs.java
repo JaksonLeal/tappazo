@@ -1,6 +1,7 @@
 package com.tappazo.infrastructure.web.dto;
 
 import com.tappazo.domain.model.GameMode;
+import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
@@ -18,6 +19,17 @@ public final class WebDTOs {
     public record GoogleAuthRequest(
             @NotBlank(message = "El idToken no puede estar vacío")
             String idToken
+    ) {}
+
+    public record LocalAuthRequest(
+            @NotBlank(message = "El correo no puede estar vacío")
+            @Email(message = "El correo no tiene un formato válido")
+            @Size(max = 150, message = "El correo no puede superar 150 caracteres")
+            String email,
+
+            @NotBlank(message = "El nickname no puede estar vacío")
+            @Size(max = 50, message = "El nickname no puede superar 50 caracteres")
+            String nickname
     ) {}
 
     public record AuthResponse(

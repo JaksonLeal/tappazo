@@ -1,0 +1,169 @@
+:root {
+  color-scheme: dark;
+  font-family: Inter, "Segoe UI", sans-serif;
+  background: #10131a;
+  color: #f4f6fb;
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  min-width: 320px;
+  min-height: 100vh;
+  margin: 0;
+  background:
+    radial-gradient(ellipse at top left, rgb(58 113 238 / 18%), transparent 40rem),
+    #10131a;
+}
+
+button,
+input,
+textarea {
+  font: inherit;
+}
+
+.shell {
+  width: min(100% - 2rem, 720px);
+  margin: 0 auto;
+  padding: 4rem 0 2rem;
+}
+
+header {
+  margin-bottom: 2rem;
+}
+
+.eyebrow {
+  color: #9bb9ff;
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+}
+
+h1 {
+  margin: 0.5rem 0;
+  font-size: clamp(2.2rem, 7vw, 3.5rem);
+}
+
+.intro,
+.hint,
+footer {
+  color: #aab2c2;
+  line-height: 1.6;
+}
+
+.card {
+  margin: 1rem 0;
+  padding: clamp(1.25rem, 4vw, 2rem);
+  border: 1px solid #2a3040;
+  border-radius: 1rem;
+  background: rgb(24 29 40 / 92%);
+  box-shadow: 0 1rem 3rem rgb(0 0 0 / 16%);
+}
+
+label {
+  display: block;
+  margin: 1rem 0 0.5rem;
+  font-weight: 650;
+}
+
+input,
+textarea {
+  width: 100%;
+  padding: 0.8rem 0.9rem;
+  border: 1px solid #394257;
+  border-radius: 0.6rem;
+  outline: none;
+  background: #111620;
+  color: #f4f6fb;
+}
+
+input:focus,
+textarea:focus {
+  border-color: #83a7ff;
+  box-shadow: 0 0 0 3px rgb(84 132 255 / 18%);
+}
+
+textarea {
+  resize: vertical;
+  overflow-wrap: anywhere;
+}
+
+code {
+  color: #c5d4ff;
+  overflow-wrap: anywhere;
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  margin-top: 1.25rem;
+}
+
+button {
+  min-height: 2.75rem;
+  padding: 0.7rem 1rem;
+  border: 0;
+  border-radius: 0.6rem;
+  background: #527df0;
+  color: white;
+  cursor: pointer;
+  font-weight: 700;
+}
+
+button.secondary {
+  border: 1px solid #414a5f;
+  background: transparent;
+}
+
+button:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+.status-heading {
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+}
+
+.status-heading h2 {
+  margin: 0;
+  font-size: 1.2rem;
+}
+
+.indicator {
+  width: 0.7rem;
+  height: 0.7rem;
+  border-radius: 50%;
+  background: #777f90;
+}
+
+.indicator.connected {
+  background: #45d49a;
+  box-shadow: 0 0 0.7rem rgb(69 212 154 / 55%);
+}
+
+.remote-audio audio {
+  display: none;
+}
+
+.events {
+  display: grid;
+  gap: 0.4rem;
+  max-height: 11rem;
+  margin: 1rem 0 0;
+  padding-left: 1.4rem;
+  overflow: auto;
+  color: #c2c9d5;
+  font-size: 0.9rem;
+}
+
+footer {
+  padding: 0.5rem 0;
+  font-size: 0.85rem;
+}

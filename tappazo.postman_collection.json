@@ -1,0 +1,508 @@
+{
+  "info": {
+    "_postman_id": "0fa4316c-8ab8-4f82-a553-15f58f3d6c61",
+    "name": "tappazo",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "_exporter_id": "22858515"
+  },
+  "item": [
+    {
+      "name": "auth",
+      "item": [
+        {
+          "name": "token",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.environment.set(\"token\", pm.response.json().token);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\r\n  \"idToken\":\"eyJhbGciOiJSUzI1NiIsImtpZCI6Ijk0M2EzYTVkN2Q5MTk2MjVhNDU0ZTQ4OWI3NWMyOWFkYWI1N2FjYmEiLCJ0eXAiOiJKV1QifQ.eyJpc3MiOiJodHRwczovL2FjY291bnRzLmdvb2dsZS5jb20iLCJhenAiOiI5NDU0ODI1NjQ0MTAtOW42ams0N3BtODEzc2l0ZHNnOWVrdjlpNm1kYTAwNXEuYXBwcy5nb29nbGV1c2VyY29udGVudC5jb20iLCJhdWQiOiI5NDU0ODI1NjQ0MTAtOW42ams0N3BtODEzc2l0ZHNnOWVrdjlpNm1kYTAwNXEuYXBwcy5nb29nbGV1c2VyY29udGVudC5jb20iLCJzdWIiOiIxMTYxMTkxMzQzNTUzODM3OTM4NjEiLCJlbWFpbCI6Impha2xlYnVAZ21haWwuY29tIiwiZW1haWxfdmVyaWZpZWQiOnRydWUsImF0X2hhc2giOiJxZkZzSEJHdWpQNmloWkN4VUUwa29BIiwibmFtZSI6Ikpha3NvbiBMZWFsIEZYIiwicGljdHVyZSI6Imh0dHBzOi8vbGgzLmdvb2dsZXVzZXJjb250ZW50LmNvbS9hL0FDZzhvY0s4RGNvMW9ZSG5rRVRvUUZ1YVMtWTVldlpmenJiaFBsWUd2c2pRM3hVRGJzdHpuOWtvRkE9czk2LWMiLCJnaXZlbl9uYW1lIjoiSmFrc29uIiwiZmFtaWx5X25hbWUiOiJMZWFsIEZYIiwiaWF0IjoxNzkxNTk0NzI4LCJleHAiOjE3OTE1OTgzMjh9.OZkdUc_0ibs3nSG_SZvHW7Se2J0sgzgtxl6SnDUHoIrsmZkq5a__yudV_M-YKTi9-5ub88QOTtLu3yQLheR5P_BG9Zk1ZPu32IfVrGUUoYeW3NbmMRWIWxyKk2f2aHmfkEb_6MumILkSuPdKiPGK9vI3gNp5gGVeopnSB1Wzh26CxXdlwHV93S6XRt1438i7AHOqZPlqoB7201i1m-Nsv_1Xo45kVutewI_-1ofVVt4ll3BwW8xqvuznns7kO1Quv1SEnwI7xfLK4Gf8XhFeXzH3C4OvlDc05g-bgCM0jY8YXr0QRLHbWoCLRO91XUmHn_R2PKY6YwfbUY_dEGILRQ\"\r\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/auth/google",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "google"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "token_local",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\r\n  \"email\": \"jugador1@example.test\",\r\n  \"nickname\": \"Jugador 1\"\r\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/auth/local",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "local"
+              ]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "partida",
+      "item": [
+        {
+          "name": "create_game",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.environment.set(\"gameCode\", pm.response.json().code);\r\npm.environment.set(\"gameId\", pm.response.json().id);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\r\n  \"drinkPrice\": 3000,\r\n  \"initialMode\": \"ULTIMO_PIERDE\",\r\n  \"maxPlayers\": 10\r\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/games",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "games"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "game_id",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/games/{{gameId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "games",
+                "{{gameId}}"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "game_code",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/games/code/{{gameCode}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "games",
+                "code",
+                "{{gameCode}}"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "game_participants",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/games/{{gameId}}/participants",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "games",
+                "{{gameId}}",
+                "participants"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "mesas_id",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/mesas/{{gameId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "mesas",
+                "{{gameId}}"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "mesas_balances",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/mesas/{{gameId}}/balances",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "mesas",
+                "{{gameId}}",
+                "balances"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "mesas_debts",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/mesas/{{gameId}}/debts",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "mesas",
+                "{{gameId}}",
+                "debts"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "user_statistic",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/mesas/users/{{userId}}/statistics",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "mesas",
+                "users",
+                "{{userId}}",
+                "statistics"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "mesa_setting",
+          "request": {
+            "method": "PATCH",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\r\n  \"drinkPrice\": 3500,\r\n  \"mode\": \"PEQUENOS_PAGAN\"\r\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/games/{{gameId}}/settings",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "games",
+                "{{gameId}}",
+                "settings"
+              ]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "join",
+      "item": [
+        {
+          "name": "join_player",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\r\n  \"gameCode\": \"6L93QV\"\r\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/games/join",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "games",
+                "join"
+              ]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "voice",
+      "item": [
+        {
+          "name": "token_LiveKit",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/games/{{gameId}}/voice-token",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "games",
+                "{{gameId}}",
+                "voice-token"
+              ]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "upload_photo",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.environment.set(\"fileKey\", pm.response.json().fileKey);"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [],
+        "body": {
+          "mode": "raw",
+          "raw": "{\r\n  \"fileName\": \"foto.jpg\",\r\n  \"contentType\": \"image/jpeg\",\r\n  \"folder\": \"avatars\"\r\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/media/presigned-upload",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "media",
+            "presigned-upload"
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "download_photo",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/media/presigned-download?fileKey={{fileKey}}",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "media",
+            "presigned-download"
+          ],
+          "query": [
+            {
+              "key": "fileKey",
+              "value": "{{fileKey}}"
+            }
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "simulator_rounds",
+      "request": {
+        "method": "POST",
+        "header": [],
+        "body": {
+          "mode": "raw",
+          "raw": "{\r\n  \"results\": [\r\n    { \"userId\": \"c3c56d82-83b1-4e00-8783-505a9dfe2e08\", \"number\": 12 },\r\n    { \"userId\": \"2f8114ba-af70-4848-a469-5a12df2a3d18\", \"number\": 48 },\r\n    { \"userId\": \"41155067-ddb3-4349-8fa6-dd1232963e16\", \"number\": 83 },\r\n    { \"userId\": \"c6c0bcbf-2d97-4e18-b57e-73c765a09e0b\", \"number\": 21 }\r\n  ]\r\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/local/simulator/games/{{gameId}}/rounds",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "local",
+            "simulator",
+            "games",
+            "{{gameId}}",
+            "rounds"
+          ]
+        }
+      },
+      "response": []
+    }
+  ],
+  "auth": {
+    "type": "bearer",
+    "bearer": [
+      {
+        "key": "token",
+        "value": "{{token}}",
+        "type": "string"
+      }
+    ]
+  },
+  "variable": [
+    {
+      "key": "json_web_token_073f",
+      "secret": true
+    }
+  ]
+}

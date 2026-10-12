@@ -1,0 +1,31 @@
+{
+	"version": "2.0.0",
+	"tasks": [
+		{
+			"label": "Run Tappazo Backend (Local MySQL)",
+			"type": "shell",
+			"command": "powershell.exe",
+			"args": [
+				"-NoProfile",
+				"-ExecutionPolicy",
+				"Bypass",
+				"-File",
+				"${workspaceFolder}\\tappazo-backend\\run-local.ps1"
+			],
+			"isBackground": true,
+			"problemMatcher": {
+				"owner": "spring-boot",
+				"pattern": {
+					"regexp": "^(.*)$",
+					"message": 1
+				},
+				"background": {
+					"activeOnStart": true,
+					"beginsPattern": ".*Starting TappazoApplication.*",
+					"endsPattern": ".*Started TappazoApplication in .*"
+				}
+			},
+			"group": "build"
+		}
+	]
+}

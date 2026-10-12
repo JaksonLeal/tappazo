@@ -111,6 +111,17 @@ public class ResolveRoundUseCase {
 
         // Caso con Empate (Sección 32, 33)
         if (gameResult.hasTie()) {
+            Set<String> confirmedLoserIds = new HashSet<>(gameResult.getConfirmedLosers());
+            Set<String> winnerIds = new HashSet<>(gameResult.getWinners());
+            for (RoundParticipant participant : participants) {
+                if (confirmedLoserIds.contains(participant.getUserId())) {
+                    participant.markConfirmedLoser();
+                } else if (winnerIds.contains(participant.getUserId())) {
+                    participant.markWinner();
+                }
+            }
+            roundParticipantRepository.saveAll(participants);
+
             if (round.getState() != RoundState.RESOLVING) {
                 round.startResolving();
             }

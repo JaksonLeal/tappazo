@@ -91,6 +91,19 @@ public class WebSocketGameNotificationAdapter implements GameNotificationPort {
     }
 
     @Override
+    public void notifyTieBreakDeciderSelected(String gameId, TieBreak tieBreak) {
+        String destination = TOPIC_PREFIX + gameId;
+        Map<String, Object> payload = Map.of(
+                "tieBreakId", tieBreak.getId(),
+                "status", tieBreak.getStatus().name(),
+                "selectedDeciderId", tieBreak.getSelectedDeciderId()
+        );
+        var event = GameWebSocketEvent.of("TIE_BREAK_DECIDER_SELECTED", gameId, payload);
+        log.info("Enviando evento WebSocket {} a {}", event.type(), destination);
+        messagingTemplate.convertAndSend(destination, event);
+    }
+
+    @Override
     public void notifyTieBreakResolved(String gameId, TieBreak tieBreak) {
         String destination = TOPIC_PREFIX + gameId;
         Map<String, Object> payload = Map.of(

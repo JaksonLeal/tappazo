@@ -216,6 +216,7 @@ public class InMemoryRepositories {
         @Override public void notifyAttemptSubmitted(String gameId, String roundId, RevealAttempt attempt) { notificationsCount++; }
         @Override public void notifyRoundResolved(String gameId, Round round, GameResult result, List<DebtMovement> movements) { notificationsCount++; }
         @Override public void notifyTieBreakStarted(String gameId, TieBreak tieBreak) { notificationsCount++; }
+        @Override public void notifyTieBreakDeciderSelected(String gameId, TieBreak tieBreak) { notificationsCount++; }
         @Override public void notifyTieBreakResolved(String gameId, TieBreak tieBreak) { notificationsCount++; }
         @Override public void notifyGameFinished(String gameId) { notificationsCount++; }
     }

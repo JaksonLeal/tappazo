@@ -37,6 +37,7 @@ public class Game {
         }
         this.currentDrinkPrice = currentDrinkPrice;
         this.currentMode = Objects.requireNonNull(currentMode, "currentMode must not be null");
+        validatePlayerLimit(maxPlayers, currentMode);
         this.state = GameState.LOBBY;
         this.version = 0L;
         this.createdAt = Instant.now();
@@ -78,8 +79,18 @@ public class Game {
         if (state != GameState.LOBBY) {
             throw new InvalidGameStateException("Solo se puede cambiar la modalidad mientras la partida esté en LOBBY");
         }
-        this.currentMode = Objects.requireNonNull(newMode, "newMode must not be null");
+        GameMode selectedMode = Objects.requireNonNull(newMode, "newMode must not be null");
+        validatePlayerLimit(maxPlayers, selectedMode);
+        this.currentMode = selectedMode;
         this.updatedAt = Instant.now();
+    }
+
+    private static void validatePlayerLimit(int maxPlayers, GameMode mode) {
+        if (maxPlayers < mode.getMinPlayers()) {
+            throw new IllegalArgumentException(
+                    "maxPlayers debe ser al menos " + mode.getMinPlayers() + " para la modalidad " + mode.name()
+            );
+        }
     }
 
     /**

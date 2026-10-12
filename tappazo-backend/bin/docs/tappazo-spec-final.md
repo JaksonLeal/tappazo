@@ -16,11 +16,16 @@ Tappazo también calcula las obligaciones económicas generadas durante las part
 
 **Importante:** Tappazo NO procesa dinero real. La aplicación únicamente registra quién debe dinero a quién, cuánto, por qué concepto, de qué ronda proviene la deuda, y balances acumulados entre jugadores **dentro de una misma partida**. Los pagos reales se hacen externamente (Nequi, transferencia, efectivo, etc.).
 
+**Estado de implementación:** este documento reúne reglas funcionales objetivo
+y arquitectura. No todas las funciones descritas están expuestas por el
+backend actual. Antes de integrar una operación móvil, verifica las tablas de
+rutas implementadas y pendientes en las secciones 67–68.
+
 ---
 
 # 2. TECNOLOGÍAS
 
-**Backend:** Java 21, Spring Boot, MySQL, JPA/Hibernate, Spring Security, JWT, Google Login, REST API, WebSocket, Docker, JUnit, Clean Architecture, SOLID.
+**Backend:** Java 25, Spring Boot, MySQL, JPA/Hibernate, Spring Security, JWT, Google Login, REST API, WebSocket, Docker, JUnit, Clean Architecture, SOLID.
 
 **Almacenamiento de imágenes:** bucket compatible con S3. Desarrollo/beta: **MinIO** en el mismo `docker-compose.yml`. Producción: AWS S3 o Cloudflare R2 (API compatible, sin cambio de código).
 
@@ -40,11 +45,13 @@ Flutter → Google Login → Google ID Token → Backend
    → Flutter recibe JWT
 ```
 
-El JWT de Tappazo (no el token de Google) se usa para **todo**: REST y WebSocket (sección 72).
+El JWT de Tappazo (no el token de Google) se usa para las rutas protegidas y
+WebSocket (sección 68).
 
-Endpoint: `POST /auth/google`
+Endpoint actual: `POST /api/v1/auth/google` (alias legado: `/auth/google`).
 
----
+El flujo de autenticación anterior describe el objetivo de producto; las
+capacidades disponibles del backend se detallan en la sección 67.
 
 # 4. USUARIO Y NICKNAME
 
@@ -78,7 +85,11 @@ Al crear una partida, el backend genera un código único (ej. `X7K29P`), el cre
 
 # 7. LÍMITE DE JUGADORES
 
-Mínimo global: **2**. Máximo configurable (no hardcodeado): `MAX_PLAYERS = 10`.
+La capacidad total de una partida (`maxPlayers`) la elige el host al crearla y
+actualmente admite de **2 a 10 jugadores**, inclusive. No representa el número
+de perdedores. La modalidad impone además un mínimo de participantes: 2 para
+`ULTIMO_PIERDE`, 3 para `PEQUENOS_PAGAN` y 4 para `ULTIMOS_DOS_PIERDEN`.
+El backend rechaza una capacidad inferior al mínimo de la modalidad elegida.
 
 ---
 
@@ -107,9 +118,17 @@ Esto reemplaza la regla anterior de "el espectador nunca puede convertirse en ju
 
 # 9. HOST
 
-El creador de la partida es el host inicial. El host puede: iniciar la ronda (sujeto al mínimo por modalidad, sección 12), modificar precio/modalidad mientras el `Game` esté en `LOBBY`, controlar acciones administrativas, arbitrar una revelación que agotó sus intentos (sección 25), y finalizar la partida (`POST /games/{id}/finish`, solo permitido estando en `LOBBY`, nunca a mitad de una ronda).
+El creador de la partida es el host inicial. En el backend actual, el host
+puede crear la partida, cambiar precio y modalidad mientras está en `LOBBY`,
+y usar las rutas locales de simulación cuando se ejecuta con `local-auth`.
+La especificación funcional contempla además iniciar/finalizar rondas,
+administrar revelaciones y cambiar de host; estas acciones no deben asumirse
+disponibles en el cliente móvil hasta que se agreguen sus contratos REST/STOMP
+(ver sección 67).
 
-**Cambio de host:** si el host se desconecta, se aplica la política de espera general (secciones 14-17). Si definitivamente debe cambiar, el nuevo host es el primer jugador `ACTIVE` ordenado alfabéticamente por nickname. Un jugador `STAND_BY` o `SPECTATOR` no es elegible.
+**Cambio de host:** la política funcional sigue siendo que el nuevo host sea el
+primer jugador `ACTIVE` ordenado alfabéticamente por nickname. El backend
+actual no implementa la transferencia automática de host.
 
 ---
 
@@ -371,7 +390,12 @@ reveals/{gameId}/{roundId}/{playerId}-{attemptNumber}.jpg   (temporales)
 saved-caps/{userId}/{1|2}.jpg                                (permanentes, máx. 2)
 ```
 
-**Retención corregida:** las fotos de `reveals/*` **no se borran inmediatamente al quedar `APPROVED`** — se conservan hasta que la `Round` completa pasa a `FINISHED`, para que un jugador que se reconecta o un espectador que consulta `GET /games/{id}/state` siga viéndolas mientras la ronda está activa. Al terminar la ronda, se eliminan. Como respaldo, configurar expiración automática del bucket (ej. 48h).
+**Retención objetivo:** las fotos de `reveals/*` no se deben borrar al quedar
+`APPROVED`; se conservan hasta que la `Round` pasa a `FINISHED`, de modo que un
+jugador que se reconecta pueda recuperar la información de la ronda. El backend
+actual no implementa todavía la consulta de estado detallado de ronda desde el
+móvil. Al terminar la ronda, se eliminan. Como respaldo, configurar expiración
+automática del bucket (ej. 48h).
 
 `saved-caps/*` no expira; solo se borra o reemplaza cuando el usuario lo pide explícitamente (máximo 2 por perfil).
 
@@ -469,18 +493,25 @@ Un jugador con loser slot ya confirmado no vuelve a competir por ese puesto.
 
 # 33. OPCIONES DE DESEMPATE
 
-Los jugadores empatados eligen entre `NUEVA_RONDA` o `DIVIDIR_CUENTA`. Si todos coinciden, se aplica esa opción. Si hay desacuerdo y existe al menos un jugador **no empatado** disponible, el backend elige aleatoriamente a uno de ellos para decidir de forma definitiva (el azar se ejecuta en backend, nunca en Flutter).
+Los jugadores empatados votan entre `NUEVA_RONDA` y `DIVIDIR_CUENTA`. Cada
+participante del desempate debe emitir un voto; el backend espera todos los
+votos antes de resolverlo.
 
-**Caso especial — todos los jugadores de la ronda quedaron empatados** (no hay nadie no-empatado para decidir):
+- Si todos los votos coinciden, se aplica la opción unánime.
+- Si hay desacuerdo en un empate parcial, el backend selecciona aleatoriamente
+  un jugador no empatado de esa ronda. El desempate permanece `PENDING`; solo
+  el árbitro seleccionado puede emitir la decisión final. El backend notifica
+  su `selectedDeciderId` por `TIE_BREAK_DECIDER_SELECTED`.
+- Si todos los jugadores de la ronda están empatados, no hay árbitro no
+  empatado: ante desacuerdo, el host de la partida es el árbitro. También debe
+  esperar a que todos los empatados hayan votado.
+- Un segundo empate total no cambia la regla ni fuerza una decisión
+  automática: se vuelve a votar.
 
-```text
-1. Se ejecuta automáticamente NUEVA_RONDA.
-2. Mensaje a todos: "Como todos quedaron empatados, jugaremos una
-   ronda más. Si vuelven a empatar, la cuenta se dividirá entre todos."
-3. Se juega la ronda de desempate.
-4. Si vuelve a haber empate total entre los mismos jugadores:
-   → se aplica DIVIDIR_CUENTA automáticamente, sin más intentos.
-```
+Si se elige `DIVIDIR_CUENTA` para un empate total, la ronda finaliza sin
+movimientos de deuda ni cambios de balance: no hay ganadores a quienes cobrar
+y cada jugador paga su propia bebida. En un empate parcial sí se distribuye la
+cuenta conforme a las reglas económicas de las secciones 36 y 37.
 
 **Persistencia del desempate:**
 
@@ -494,7 +525,9 @@ TieBreakParticipant
 - tieBreakId, playerId, decision, decisionAt
 ```
 
-Esto permite reconstruir cadenas completas: `Ronda → TieBreak → NUEVA_RONDA → nuevo TieBreak → DIVIDIR_CUENTA`.
+La decisión del árbitro se registra en `selectedDeciderId`; `resolutionMode`,
+`status` y `resolvedAt` solo indican una resolución final después de que el
+árbitro vota. Las cadenas de rondas se relacionan mediante `tieBreakRoundId`.
 
 ---
 
@@ -514,7 +547,15 @@ pero sí pueden seguir siendo beneficiarios de la deuda final.
 TieBreakCompetitors ≠ RoundParticipants
 ```
 
-El resultado final de la ronda (quién gana/pierde en total) se recalcula una vez resuelto el desempate, y la distribución económica se hace sobre ese resultado final usando el principio único de la sección 36 — no hace falta un modelo económico aparte para "nueva ronda".
+Regla funcional: una nueva ronda de desempate debe resolver únicamente los
+puestos restantes entre los empatados; los estados confirmados de los demás
+jugadores se conservan. **Estado del backend actual:** al elegir
+`NUEVA_RONDA`, crea una entidad `TIE_BREAK_ROUND` y registra en ella a los
+jugadores activos, pero todavía no existe un flujo móvil REST para iniciar,
+capturar sus resultados y finalizar esa ronda. El simulador del perfil
+`local-auth` solo permite continuar la nueva ronda cuando el empate fue total;
+no implementa la continuación de un empate parcial. Flutter no debe inventar
+un endpoint para esta operación; es trabajo pendiente del backend.
 
 ---
 
@@ -526,16 +567,16 @@ La nueva ronda de desempate se registra como una ronda/cuenta separada (`roundTy
 
 # 36. PRINCIPIO ECONÓMICO MAESTRO: QUÉ ES "LA CUENTA"
 
-Para que la resolución normal, `NUEVA_RONDA` y `DIVIDIR_CUENTA` sean siempre equivalentes en el monto total movido, se define una única fórmula:
+Para las rondas con ganadores y perdedores, la cuenta a distribuir se define así:
 
 ```text
 CUENTA_DE_LA_RONDA = (N_jugadores - TOTAL_LOSER_SLOTS) × drinkPrice
 ```
 
-Es decir, **la cuenta es siempre el valor de las bebidas de los ganadores finales**, nunca el total de las N bebidas de todos los jugadores. Esto es válido sin importar el camino de resolución:
+Es decir, **la cuenta a cobrar es el valor de las bebidas de los ganadores finales**, nunca el total de las N bebidas de todos los jugadores. No aplica al empate total resuelto con `DIVIDIR_CUENTA`, que no genera deuda (sección 33). Para el resto de caminos:
 
 * Resolución normal (sin empate): se distribuye con el algoritmo de la sección 51 (cada perdedor cubre primero una bebida completa a un ganador, y el resto se reparte entre los perdedores).
-* `DIVIDIR_CUENTA` (sección 37): el mismo monto total se reparte usando porcentajes en vez del algoritmo de la sección 51.
+* `DIVIDIR_CUENTA` con empate parcial (sección 37): el mismo monto total se reparte usando porcentajes en vez del algoritmo de la sección 51.
 
 Ejemplo de verificación (5 jugadores, 1 perdedor, $4.000 la bebida): `CUENTA = (5-1) × 4000 = 16.000` — exactamente lo que el perdedor paga repartido entre los 4 ganadores, nunca $20.000 (el total de las 5 bebidas).
 
@@ -756,7 +797,10 @@ Una partida tiene varias rondas, y un jugador puede perder en una y ganar en la 
 
 # 54. HISTORIAL
 
-Detalle profundo (fotos, votos, reintentos) se guarda localmente en el dispositivo (SQLite/Hive/Isar), no en el backend. El backend expone solo un resumen agregado vía `GET /users/me/history`:
+El historial detallado (fotos, votos, reintentos) es una capacidad prevista
+para almacenamiento local en el dispositivo (SQLite/Hive/Isar), no una ruta
+disponible en el backend actual. El resumen agregado vía
+`GET /api/v1/users/me/history` también está pendiente; ver sección 67:
 
 ```text
 gameId, fecha, jugadores participantes, modo(s) por ronda,
@@ -895,7 +939,11 @@ LoserPortionCalculator  → aplica la fórmula de porcentajes de la sección 37
 TieBreakResolver
 ```
 
-Detecta empate relevante, determina loser slots restantes, recibe la decisión, resuelve `NUEVA_RONDA` o `DIVIDIR_CUENTA`, maneja el caso "todos empatados" (sección 33) y garantiza que los puestos restantes queden exactamente ocupados.
+Detecta empate relevante y determina los puestos restantes. Los votos y la
+decisión final siguen la sección 33: todos los empatados votan, el árbitro
+seleccionado decide si hay desacuerdo y, en empate total, arbitra el anfitrión.
+El frontend presenta el estado comunicado por backend; no escoge árbitro ni
+declara resuelto un desempate antes de la decisión final.
 
 ---
 
@@ -906,74 +954,152 @@ Constraints únicos:
   UNIQUE(revealAttemptId, voterId)   -- un voto por jugador por intento
   UNIQUE(gameId, userId)             -- no duplicar participante
 
-Optimistic locking (@Version) en: Game, Round, Reveal, TieBreak
+Optimistic locking (@Version) en entidades que lo requieren
 
 Transaccional (atómico): StartRound, SubmitReveal, Vote,
   ResolveTieBreak, FinishRound, JoinGame, HostArbitration
 
-Idempotencia (Idempotency-Key o commandId) requerida en:
+Idempotencia (Idempotency-Key o commandId) recomendada para:
   POST /rounds/{roundId}/reveal
   POST /rounds/{roundId}/reveals/{attemptId}/vote
   POST /games/{id}/rounds/{roundId}/start
 ```
 
-Esto evita dobles inicios de ronda, votos duplicados por reintentos de red, y condiciones de carrera al unirse con el último cupo disponible.
+**Contrato de integración:** el backend actual aplica unicidad de participantes
+y versionado en algunas entidades, pero no ofrece aún todos los flujos de
+inicio/resolución de ronda, votación de revelaciones ni claves de idempotencia
+descritos aquí. El cliente móvil debe manejar errores HTTP y estados de
+WebSocket; no debe tratar como idempotente una petición salvo que el endpoint
+lo documente explícitamente.
 
 ---
 
 # 67. API REST
 
+Esta sección separa las rutas implementadas de las capacidades funcionales
+pendientes. Las rutas de producción usan el prefijo `/api/v1`. Las protegidas
+requieren `Authorization: Bearer <tappazo-jwt>`; este JWT es distinto del
+Google ID token.
+
+## Rutas disponibles en el backend actual
+
 ```http
-POST   /auth/google
-POST   /games
-POST   /games/{code}/join
-GET    /games/{id}
-GET    /games/{id}/state
-PATCH  /games/{id}/beer-price
-POST   /games/{id}/leave
-POST   /games/{id}/finish
-POST   /games/{id}/voice-token
-POST   /games/{id}/rounds
-POST   /games/{id}/rounds/{roundId}/start
-POST   /rounds/{roundId}/reveal
-POST   /rounds/{roundId}/reveals/{revealId}/attempts
-POST   /rounds/{roundId}/reveals/{revealId}/vote
-POST   /rounds/{roundId}/reveals/{revealId}/host-arbitration
-POST   /games/{id}/standby-decision
-POST   /tie-breaks/{id}/decision
-POST   /tie-breaks/{id}/decider-decision
-GET    /users/me/profile
-PATCH  /users/me/profile
-GET    /users/me/stats
-GET    /users/me/balances
-GET    /users/me/history
-POST   /users/me/saved-caps
-DELETE /users/me/saved-caps/{id}
+POST   /api/v1/auth/google
+POST   /api/v1/games
+POST   /api/v1/games/join
+GET    /api/v1/games/{id}
+GET    /api/v1/games/code/{code}
+GET    /api/v1/games/{id}/participants
+PATCH  /api/v1/games/{id}/settings
+POST   /api/v1/games/{id}/voice-token
+GET    /api/v1/mesas/{gameId}
+GET    /api/v1/mesas/{gameId}/balances
+GET    /api/v1/mesas/{gameId}/debts
+GET    /api/v1/mesas/users/{userId}/statistics
+POST   /api/v1/media/presigned-upload
+GET    /api/v1/media/presigned-download?fileKey={fileKey}
 ```
 
-Conceptuales — ajustables en implementación sin cambiar las reglas de negocio.
+`POST /auth/google` también se acepta como alias legado. Para crear una
+partida, el body incluye `drinkPrice`, `initialMode` y `maxPlayers` opcional
+(2–10); `maxPlayers` es la capacidad total y debe cubrir el mínimo del modo.
+Para unirse, `POST /api/v1/games/join` recibe `{"gameCode":"..."}`. Los cambios
+de ajustes usan `{"drinkPrice":..., "mode":"..."}` y solo el host puede
+realizarlos en `LOBBY`.
+
+Las respuestas de partida incluyen `id`, `code`, `hostId`, `state`,
+`maxPlayers`, `currentDrinkPrice` y `currentMode`. `GET /api/v1/games/{id}`
+incluye participantes y `currentRound`; balances devuelve `netDebts` y
+`totalActiveDebt`, y deudas devuelve movimientos brutos. La colección de
+Postman y sus ejemplos están enlazados desde el README del repositorio.
+
+## Rutas solo de desarrollo local
+
+Disponibles únicamente con el perfil Spring `local-auth`; no forman parte de
+la API de producción ni deben habilitarse en la app publicada:
+
+```http
+POST /api/v1/auth/local
+POST /api/v1/local/simulator/games/{gameId}/rounds
+POST /api/v1/local/simulator/tie-breaks/{tieBreakId}/resolve
+```
+
+El simulador crea resultados aprobados directamente para pruebas manuales; no
+sustituye el flujo real de fotos, votaciones ni arbitraje.
+
+## Capacidades de producción pendientes
+
+Estas acciones pertenecen al diseño funcional, pero no tienen actualmente
+endpoint REST. Flutter no debe asumir que ya existen:
+
+```http
+POST   /api/v1/games/{id}/rounds
+POST   /api/v1/rounds/{roundId}/reveals
+POST   /api/v1/rounds/{roundId}/reveals/{revealId}/attempts
+POST   /api/v1/rounds/{roundId}/reveals/{revealId}/attempts/{attemptId}/votes
+POST   /api/v1/rounds/{roundId}/reveals/{revealId}/host-arbitration
+POST   /api/v1/games/{id}/leave
+POST   /api/v1/games/{id}/finish
+GET/PATCH /api/v1/users/me/profile
+GET    /api/v1/users/me/stats
+GET    /api/v1/users/me/balances
+GET    /api/v1/users/me/history
+```
+
+El envío de intentos de revelación y el voto de desempate se reciben hoy por
+STOMP/WebSocket (sección 68); no hay handler WebSocket para votar la aprobación
+o rechazo de una revelación. Una partida jugable end-to-end desde Flutter
+requiere que backend implemente inicio de ronda, acciones de revelación y
+votación, además de la continuación de desempates. Flutter sí puede integrar
+login, lobby, unirse, ajustes, lectura de mesas/deudas/balances, media y token
+de voz. Las rondas pueden probarse localmente mediante el simulador.
 
 ---
 
 # 68. WEBSOCKET
 
-**Autenticación:** mismo JWT de Tappazo, validado en el `HandshakeInterceptor` antes de aceptar la conexión y asociarla a `gameId`/`userId`.
+Conexión nativa a `/ws` o fallback SockJS en `/ws-sockjs`. STOMP usa `/app`
+para enviar acciones y `/topic` para suscribirse. En `CONNECT`, el cliente
+envía el JWT de Tappazo en el header `Authorization: Bearer <jwt>` o en el
+header `token: <jwt>`. La conexión no se liga automáticamente a una partida:
+el cliente se suscribe al topic de esa partida.
 
-Eventos:
+## Acciones STOMP implementadas
 
 ```text
-PLAYER_CONNECTED, PLAYER_DISCONNECTED, PLAYER_JOINED, PLAYER_LEFT
-GAME_LOBBY, GAME_IN_PROGRESS, GAME_FINISHED
-ROUND_STARTED, TURN_CHANGED
-REVEAL_PROPOSED, VOTE_REGISTERED, REVEAL_APPROVED, REVEAL_REJECTED,
-REVEAL_HOST_ARBITRATION_REQUIRED, REVEAL_INVALID
-PLAYER_STAND_BY, PLAYER_RECONNECTED, STANDBY_DECISION_REQUIRED,
-STANDBY_DECISION_RESULT, PLAYER_REMOVED_DISCONNECTED
-HOST_CHANGED
-TIE_BREAK_STARTED, TIE_BREAK_ALL_TIED_WARNING,
-TIE_BREAK_DECISION_REQUIRED, TIE_BREAK_RESOLVED
-ROUND_FINISHED
+SEND /app/game/{gameId}/attempt
+  {"roundId":"...", "proposedNumber":42,
+   "photoReference":"...", "photoOmittedReason":null}
+
+SEND /app/game/{gameId}/tiebreak-vote
+  {"tieBreakId":"...", "decision":"NUEVA_RONDA"}
+
+SEND /app/game/{gameId}/chat
+  {"message":"...", "type":"TEXT"}
+
+SUBSCRIBE /topic/game/{gameId}
+SUBSCRIBE /topic/game/{gameId}/chat
 ```
+
+`DIVIDIR_CUENTA` también es una decisión válida. El backend obtiene la
+identidad del votante desde el JWT. Si hay desacuerdo, el cliente escucha
+`TIE_BREAK_DECIDER_SELECTED` y espera el voto final del árbitro; el
+desempate permanece pendiente hasta entonces.
+
+Los eventos definidos por el adaptador son:
+
+```text
+PLAYER_JOINED, ROUND_STARTED, ATTEMPT_SUBMITTED, ROUND_RESOLVED,
+TIE_BREAK_STARTED, TIE_BREAK_DECIDER_SELECTED, TIE_BREAK_RESOLVED,
+GAME_FINISHED, CHAT_MESSAGE
+```
+
+`CHAT_MESSAGE` se publica en `/topic/game/{gameId}/chat`; los demás eventos,
+en `/topic/game/{gameId}`. No todos los eventos que conoce el adaptador son
+emitidos por un flujo activo: aún no existe flujo completo de inicio de ronda,
+votación de revelación, conexión/desconexión, stand-by o cambio de host.
+Flutter debe tolerar eventos desconocidos y refrescar el estado por REST al
+reconectarse.
 
 ---
 
@@ -983,7 +1109,11 @@ El frontend nunca decide perdedores, ganadores, votos válidos, turnos, timeouts
 
 ---
 
-# 70. FLUJO COMPLETO DE UNA RONDA
+# 70. FLUJO OBJETIVO DE UNA RONDA
+
+El flujo siguiente es el comportamiento funcional deseado, no una afirmación
+de que todas sus operaciones estén implementadas. Ver la sección 67 para las
+operaciones que el cliente móvil puede consumir actualmente.
 
 ```text
 LOBBY (Game)
@@ -996,10 +1126,13 @@ VALIDATING (votación en paralelo, hasta 3 intentos, luego arbitraje de host)
 RESOLVING
    ↓ aplica GameModeRule → ¿empate relevante?
    ├─ NO → resultado final
-   └─ SÍ → TIE_BREAK (maneja caso "todos empatados")
-            → NUEVA_RONDA o DIVIDIR_CUENTA
-            → resuelve loser slots exactos (incluye automaticLosers)
-   ↓ calcula obligaciones (CUENTA = (N-L)×drinkPrice, sección 36)
+   └─ SÍ → TIE_BREAK
+            → todos los empatados votan NUEVA_RONDA o DIVIDIR_CUENTA
+            → si discrepan, decide el árbitro seleccionado; en empate total,
+              decide el host. El desempate espera ese voto final.
+            → NUEVA_RONDA continúa los loser slots restantes
+   ↓ calcula obligaciones cuando hay ganadores
+     (CUENTA = (N-L)×drinkPrice); empate total + DIVIDIR_CUENTA no genera deuda
 FINISHED (Round) → Game vuelve a LOBBY
    ↓ guarda estadísticas, actualiza balance de esta partida
    ↓ espectadores que se unieron durante la ronda pasan a PLAYER
@@ -1007,7 +1140,11 @@ FINISHED (Round) → Game vuelve a LOBBY
 
 ---
 
-# 71. ORDEN DE IMPLEMENTACIÓN
+# 71. HOJA DE RUTA DE IMPLEMENTACIÓN
+
+Esta hoja de ruta es el orden de construcción originalmente previsto; no es
+un indicador del estado actual. Para conocer las capacidades implementadas y
+pendientes, usar las secciones 67 y 68.
 
 ```text
 Fase 1 — Dominio: GameMode, GameResult, PlayerResult, LoserSlotResolver,
@@ -1029,10 +1166,15 @@ Fase 11 — Flutter: REST, WebSocket, SDK de voz
 
 # 72. PRUEBAS UNITARIAS OBLIGATORIAS
 
+Los casos siguientes definen cobertura funcional esperada. Los escenarios de
+desempate deben validar tanto las reglas de dominio como la integración con
+persistencia y notificaciones cuando esos flujos estén disponibles.
+
 ```text
-Mínimos: 2 jug. en ULTIMO_PIERDE → puede iniciar.
-         3 jug. en ULTIMOS_DOS_PIERDEN → NO puede iniciar (mínimo 4).
-         1 jugador → nunca puede iniciar.
+Capacidad: maxPlayers entre 2 y 10; es el máximo total de jugadores, no el
+           máximo de perdedores. Rechazar un modo si su mínimo supera la
+           capacidad: ULTIMO_PIERDE=2, PEQUENOS_PAGAN=3,
+           ULTIMOS_DOS_PIERDEN=4.
 
 Último pierde: [25,17,25,25] → 17 pierde.
 Últimos 2 (4+ jugadores): [10,10,20,30] → ambos 10 pierden, sin desempate.
@@ -1082,16 +1224,20 @@ se unió.
 
 Precio: modificable solo con Game en LOBBY; congelado durante la ronda.
 
-Desempate por desacuerdo: selección aleatoria de un jugador no
-empatado, en backend. Caso todos empatados: NUEVA_RONDA automática
-con aviso, segundo empate total → DIVIDIR_CUENTA forzado.
+Desempate unánime: esperar los votos de todos los empatados; aplicar la opción
+                    solo cuando coinciden.
+Desempate parcial con desacuerdo: seleccionar aleatoriamente un no-empatado;
+                    estado sigue PENDING hasta el voto del árbitro.
+Empate total con desacuerdo: host es árbitro; no resolver automáticamente.
+Empate total + DIVIDIR_CUENTA: sin DebtMovement ni incremento de gasto.
+Segundo empate total: repetir votación; no forzar resolución por ser segundo.
 
 Host: desconexión y regreso a tiempo = sigue como host; cambio
 definitivo = primer jugador ACTIVE por orden alfabético.
 
-Idempotencia: dos POST /start simultáneos → una sola transición
-válida. Doble voto del mismo jugador al mismo intento → rechazado
-por constraint único.
+Idempotencia: cuando se implemente el inicio de ronda, dos solicitudes
+simultáneas no deben iniciar dos rondas. Los endpoints deben documentar si
+aceptan claves de idempotencia; no se asume que las rutas actuales las acepten.
 ```
 
 ---
@@ -1115,10 +1261,14 @@ por constraint único.
 15. Los espectadores no pueden intervenir en una ronda en curso, pero se promueven automáticamente a jugador en la siguiente ronda.
 16. El nickname no se modifica desde una partida; el historial usa `nicknameSnapshot`.
 17. Cada modalidad exige su propio mínimo de jugadores (`ULTIMO_PIERDE`=2, `PEQUENOS_PAGAN`=3, `ULTIMOS_DOS_PIERDEN`=4); el host no puede iniciar sin cumplirlo.
-18. "La cuenta" de una ronda es siempre `(N - TOTAL_LOSER_SLOTS) × drinkPrice`, sin importar el método de resolución.
+18. Cuando una ronda genera ganadores y perdedores, la cuenta a cobrar es
+    `(N - TOTAL_LOSER_SLOTS) × drinkPrice`; empate total resuelto con
+    `DIVIDIR_CUENTA` no genera deuda ni gasto estadístico.
 19. El WebSocket se autentica con el mismo JWT de Tappazo.
 20. No existe condición de "ganador de partida"; las estadísticas de partida completa se basan en balance acumulado, no en victorias/derrotas de `Game`.
-21. Operaciones críticas (`StartRound`, `Vote`, `Reveal`, `HostArbitration`, `TieBreakDecision`, `JoinGame`) son transaccionales, con constraints únicos y, donde aplica, idempotencia.
+21. Las operaciones críticas de producción deben ser transaccionales y
+    protegerse contra duplicados/concurrencia. La disponibilidad de idempotencia
+    depende del contrato de cada endpoint; ver sección 66.
 
 ---
 

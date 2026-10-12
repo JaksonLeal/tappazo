@@ -84,18 +84,21 @@ services:
     image: livekit/livekit-server:latest
     container_name: tappazo-livekit
     restart: unless-stopped
-    command: --dev --bind 0.0.0.0
+    command: --dev --bind 0.0.0.0 --node-ip ${LIVEKIT_NODE_IP:-127.0.0.1}
     ports:
       - "7880:7880"       # HTTP API y señalización WebSocket
       - "7881:7881"       # WebRTC TCP fallback
       - "7882:7882/udp"   # WebRTC UDP tráfico de medios
     environment:
       LIVEKIT_KEYS: "devkey: secret"
+      LIVEKIT_CONFIG: |
+        rtc:
+          use_external_ip: false
     networks:
       - tappazo-network
 
   # --------------------------------------------------------------------------
-  # 5. Backend Spring Boot (Java 21)
+  # 5. Backend Spring Boot (Java 25)
   # --------------------------------------------------------------------------
   backend:
     build:

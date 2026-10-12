@@ -105,4 +105,21 @@ class GlobalExceptionHandlerTest {
                 .andExpect(jsonPath("$.validationErrors.name").value("El nombre es obligatorio"))
                 .andExpect(jsonPath("$.validationErrors.age").value("La edad es obligatoria"));
     }
+
+    @Test
+    @DisplayName("Missing JSON request body returns HTTP 400 Bad Request")
+    void handleMissingRequestBody_returns400() throws Exception {
+        String token = jwtTokenProvider.generateToken("user-test", "test@test.com", "TestUser");
+
+        mockMvc.perform(post("/api/test/validate")
+                        .header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.status").value(400))
+                .andExpect(jsonPath("$.error").value("Cuerpo de solicitud inválido"))
+                .andExpect(jsonPath("$.message").value(
+                        "Envía un cuerpo JSON válido con Content-Type: application/json"
+                ))
+                .andExpect(jsonPath("$.path").value("/api/test/validate"));
+    }
 }

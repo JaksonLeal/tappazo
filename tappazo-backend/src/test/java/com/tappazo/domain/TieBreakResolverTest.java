@@ -4,6 +4,7 @@ import com.tappazo.domain.model.GameResult;
 import com.tappazo.domain.model.PlayerResult;
 import com.tappazo.domain.model.TieBreak;
 import com.tappazo.domain.model.TieBreakResolutionMode;
+import com.tappazo.domain.model.TieBreakStatus;
 import com.tappazo.domain.service.DeciderSelector;
 import com.tappazo.domain.service.LoserPortionCalculator;
 import com.tappazo.domain.service.LoserSlotResolver;
@@ -54,8 +55,7 @@ class TieBreakResolverTest {
         TieBreakResolutionMode resolvedMode = tieBreakResolver.resolveTieBreakMode(
                 tieBreak,
                 votes,
-                List.of("P1", "P4"),
-                false
+                List.of("P1", "P4")
         );
 
         assertEquals(TieBreakResolutionMode.DIVIDIR_CUENTA, resolvedMode);
@@ -85,21 +85,23 @@ class TieBreakResolverTest {
         TieBreakResolutionMode resolvedMode = tieBreakResolver.resolveTieBreakMode(
                 tieBreak,
                 votes,
-                List.of("P4"), // P4 es no-empatado elegible
-                false
+                List.of("P4") // P4 es no-empatado elegible
         );
 
         assertNull(resolvedMode); // Requiere voto del árbitro
         assertEquals("P4", tieBreak.getSelectedDeciderId());
+        assertEquals(TieBreakStatus.PENDING, tieBreak.getStatus());
+        assertNull(tieBreak.getResolutionMode());
 
         // P4 decide NUEVA_RONDA
         tieBreakResolver.applyDeciderDecision(tieBreak, "P4", TieBreakResolutionMode.NUEVA_RONDA);
+        assertEquals(TieBreakStatus.RESOLVED, tieBreak.getStatus());
         assertEquals(TieBreakResolutionMode.NUEVA_RONDA, tieBreak.getResolutionMode());
     }
 
     @Test
-    @DisplayName("Caso todos empatados: 1er empate total -> NUEVA_RONDA automática (Sección 33, 72)")
-    void testAllTiedCaseFirstTimeTriggersNewRound() {
+    @DisplayName("Caso todos empatados: el voto unánime elige la resolución")
+    void testAllTiedCaseUnanimousVoteChoosesResolution() {
         List<PlayerResult> initial = List.of(
                 PlayerResult.normal("P1", 20),
                 PlayerResult.normal("P2", 20),
@@ -112,18 +114,21 @@ class TieBreakResolverTest {
 
         TieBreakResolutionMode mode = tieBreakResolver.resolveTieBreakMode(
                 tieBreak,
-                Map.of(),
-                List.of(),
-                false // Primer empate total
+                Map.of(
+                        "P1", TieBreakResolutionMode.DIVIDIR_CUENTA,
+                        "P2", TieBreakResolutionMode.DIVIDIR_CUENTA,
+                        "P3", TieBreakResolutionMode.DIVIDIR_CUENTA
+                ),
+                List.of()
         );
 
-        assertEquals(TieBreakResolutionMode.NUEVA_RONDA, mode);
-        assertEquals(TieBreakResolutionMode.NUEVA_RONDA, tieBreak.getResolutionMode());
+        assertEquals(TieBreakResolutionMode.DIVIDIR_CUENTA, mode);
+        assertEquals(TieBreakResolutionMode.DIVIDIR_CUENTA, tieBreak.getResolutionMode());
     }
 
     @Test
-    @DisplayName("Caso todos empatados: 2do empate total consecutivo -> DIVIDIR_CUENTA forzado (Sección 33, 72)")
-    void testAllTiedCaseSecondTimeForcesDividirCuenta() {
+    @DisplayName("Caso todos empatados: ante desacuerdo el anfitrión queda como árbitro")
+    void testAllTiedDisagreementSelectsHostAsDecider() {
         List<PlayerResult> initial = List.of(
                 PlayerResult.normal("P1", 20),
                 PlayerResult.normal("P2", 20),
@@ -135,13 +140,18 @@ class TieBreakResolverTest {
 
         TieBreakResolutionMode mode = tieBreakResolver.resolveTieBreakMode(
                 tieBreak,
-                Map.of(),
-                List.of(),
-                true // Segundo empate total consecutivo
+                Map.of(
+                        "P1", TieBreakResolutionMode.NUEVA_RONDA,
+                        "P2", TieBreakResolutionMode.DIVIDIR_CUENTA,
+                        "P3", TieBreakResolutionMode.NUEVA_RONDA
+                ),
+                List.of("P1")
         );
 
-        assertEquals(TieBreakResolutionMode.DIVIDIR_CUENTA, mode);
-        assertEquals(TieBreakResolutionMode.DIVIDIR_CUENTA, tieBreak.getResolutionMode());
+        assertNull(mode);
+        assertEquals("P1", tieBreak.getSelectedDeciderId());
+        assertEquals(TieBreakStatus.PENDING, tieBreak.getStatus());
+        assertNull(tieBreak.getResolutionMode());
     }
 
     @Test
