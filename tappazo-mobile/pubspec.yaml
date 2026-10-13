@@ -1,0 +1,41 @@
+name: tappazo
+description: "Tappazo - Aplicación móvil social para juego con bebidas y números ocultos en tapas"
+publish_to: 'none'
+version: 1.0.0+1
+
+environment:
+  sdk: '>=3.2.0 <4.0.0'
+  flutter: '>=3.16.0'
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+  # Red y comunicación
+  dio: ^5.4.0
+  web_socket_channel: ^2.4.1
+
+  # Autenticación y almacenamiento seguro
+  google_sign_in: ^6.2.1
+  flutter_secure_storage: ^9.0.0
+
+  # Gestión de estado y arquitectura
+  flutter_riverpod: ^2.5.1
+
+  # Audio en tiempo real (LiveKit)
+  livekit_client: ^2.0.4
+
+  # UI y utilidades
+  google_fonts: ^6.1.0
+  intl: ^0.19.0
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^3.0.0
+
+flutter:
+  uses-material-design: true
+  assets:
+    - assets/images/
+
