@@ -1,0 +1,8 @@
+El diseño visual vive en design/design_tokens.yaml — es la ÚNICA fuente de
+verdad para colores, tipografía y espaciado. Los .html/.png en
+design/stitch_reference/ son solo referencia de layout/composición de cada
+pantalla, NO de paleta exacta (Stitch no permite fijar eso por prompt).
+Genera lib/presentation/theme/{colors,typography,spacing}.dart a partir del
+YAML, nunca inventes valores sueltos en una pantalla.
+El flujo de navegación sigue ../tappazo-backend/docs/tappazo-spec-final.md
+secciones 11 y 70, no el flujo de ejemplo de Stitch.

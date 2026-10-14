@@ -44,6 +44,24 @@ reportarse para actualizar el documento, no al revés.
 
 **Repositorios:** `tappazo-backend` y `tappazo-mobile`, separados. El backend es la autoridad absoluta sobre las reglas del juego; el frontend nunca decide quién perdió, cuántos perdedores hay, quién vota, quién es host, cuándo termina un turno/ronda, ni cuánto debe cada jugador.
 
+**Referencia visual del frontend (Stitch):** las pantallas se prototipan
+primero en Google Stitch, que solo exporta `.html` y `.png` (no código
+Flutter). Esos archivos se guardan sin tocar en
+`tappazo-mobile/design/stitch_reference/` y sirven **únicamente como
+referencia de layout y composición de cada pantalla** — no son código de
+producción ni fuente de verdad de paleta/tipografía (Stitch no permite fijar
+eso por prompt de forma confiable). La paleta, tipografía y espaciado
+exactos viven en `tappazo-mobile/design/design_tokens.yaml`, que es la única
+fuente de verdad para esos valores; de ahí se generan
+`lib/presentation/theme/{colors,typography,spacing}.dart`. El flujo de
+navegación de Stitch tampoco es autoridad sobre el ciclo de vida real de
+`Game` y `Round`: Antigravity debe conectar la navegación y el estado según
+el ciclo descrito en las secciones 11 y 70 (`LOBBY → REVEALING → VALIDATING
+→ RESOLVING → TIE_BREAK? → FINISHED`), no según el flujo de ejemplo que
+Stitch haya inferido del prompt. Ante cualquier conflicto entre el
+HTML/PNG de Stitch y lo que digan `design_tokens.yaml` o las secciones
+11/70, ganan estos últimos.
+
 ---
 
 # 3. AUTENTICACIÓN

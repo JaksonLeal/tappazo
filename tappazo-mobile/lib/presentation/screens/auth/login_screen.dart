@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../../../core/constants/app_colors.dart';
 import '../../providers/auth_providers.dart';
 import '../../providers/auth_state.dart';
+import '../../theme/colors.dart';
+import '../../theme/spacing.dart';
+import '../../theme/typography.dart';
 import '../../widgets/google_sign_in_button.dart';
 import '../../widgets/tappazo_button.dart';
 import '../home/home_screen.dart';
@@ -40,7 +42,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(next.message),
-            backgroundColor: AppColors.danger,
+            backgroundColor: AppColors.errorContainer,
             behavior: SnackBarBehavior.floating,
           ),
         );
@@ -52,12 +54,15 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       body: SafeArea(
         child: Center(
           child: SingleChildScrollView(
-            padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 24),
+            padding: const EdgeInsets.symmetric(
+              horizontal: AppSpacing.margin,
+              vertical: AppSpacing.lg,
+            ),
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                // Logo & Tapa
+                // Logo & Tapa Cervecera de Tappazo
                 Center(
                   child: Container(
                     width: 96,
@@ -65,7 +70,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                     decoration: BoxDecoration(
                       shape: BoxShape.circle,
                       gradient: const LinearGradient(
-                        colors: [AppColors.beerGold, AppColors.primary],
+                        colors: [AppColors.secondary, AppColors.primary],
                         begin: Alignment.topLeft,
                         end: Alignment.bottomRight,
                       ),
@@ -80,34 +85,25 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                     child: const Icon(
                       Icons.sports_bar_rounded,
                       size: 48,
-                      color: Colors.black87,
+                      color: AppColors.onPrimaryContainer,
                     ),
                   ),
                 ),
-                const SizedBox(height: 24),
+                const SizedBox(height: AppSpacing.lg),
 
                 // Títulos
-                const Text(
+                Text(
                   'TAPPAZO',
                   textAlign: TextAlign.center,
-                  style: TextStyle(
-                    fontSize: 34,
-                    fontWeight: FontWeight.w900,
-                    letterSpacing: 3,
-                    color: AppColors.textPrimary,
-                  ),
+                  style: AppTypography.headlineXl.copyWith(color: AppColors.primary),
                 ),
-                const SizedBox(height: 8),
-                const Text(
+                const SizedBox(height: AppSpacing.xs),
+                Text(
                   'Inicia sesión para crear partidas,\nrevelar tus tapas y jugar con amigos',
                   textAlign: TextAlign.center,
-                  style: TextStyle(
-                    fontSize: 15,
-                    height: 1.4,
-                    color: AppColors.textSecondary,
-                  ),
+                  style: AppTypography.bodyMd.copyWith(color: AppColors.textSecondary),
                 ),
-                const SizedBox(height: 48),
+                const SizedBox(height: AppSpacing.xl),
 
                 // Botón oficial de Google Sign-In
                 GoogleSignInButton(
@@ -118,14 +114,14 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                           ref.read(authNotifierProvider.notifier).signInWithGoogle();
                         },
                 ),
-                const SizedBox(height: 28),
+                const SizedBox(height: AppSpacing.lg),
 
                 // Separador o Toggle de Modo Desarrollo
                 Row(
                   children: [
-                    const Expanded(child: Divider(color: AppColors.surfaceLight)),
+                    const Expanded(child: Divider(color: AppColors.surfaceContainerHigh)),
                     Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 12),
+                      padding: const EdgeInsets.symmetric(horizontal: AppSpacing.sm),
                       child: TextButton.icon(
                         onPressed: () {
                           setState(() {
@@ -137,48 +133,41 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                               ? Icons.keyboard_arrow_up
                               : Icons.keyboard_arrow_down,
                           size: 18,
-                          color: AppColors.textMuted,
+                          color: AppColors.outline,
                         ),
                         label: Text(
                           _showDevMode
                               ? 'Ocultar login de pruebas'
                               : 'Probar sin Google (Backend Local)',
-                          style: const TextStyle(
-                            fontSize: 13,
-                            color: AppColors.textMuted,
-                          ),
+                          style: AppTypography.bodySm.copyWith(color: AppColors.outline),
                         ),
                       ),
                     ),
-                    const Expanded(child: Divider(color: AppColors.surfaceLight)),
+                    const Expanded(child: Divider(color: AppColors.surfaceContainerHigh)),
                   ],
                 ),
 
                 // Formulario de login local (Spring local-auth)
                 if (_showDevMode) ...[
-                  const SizedBox(height: 16),
+                  const SizedBox(height: AppSpacing.md),
                   Container(
-                    padding: const EdgeInsets.all(18),
+                    padding: const EdgeInsets.all(AppSpacing.md),
                     decoration: BoxDecoration(
-                      color: AppColors.surface,
-                      borderRadius: BorderRadius.circular(16),
+                      color: AppColors.surfaceContainer,
+                      borderRadius: AppSpacing.borderRadiusMd,
                       border: Border.all(
-                        color: AppColors.surfaceLight,
+                        color: AppColors.surfaceContainerHigh,
                         width: 1,
                       ),
                     ),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
-                        const Text(
+                        Text(
                           'Simulación Local (POST /auth/local)',
-                          style: TextStyle(
-                            fontSize: 13,
-                            fontWeight: FontWeight.bold,
-                            color: AppColors.beerGold,
-                          ),
+                          style: AppTypography.labelMd.copyWith(color: AppColors.primary),
                         ),
-                        const SizedBox(height: 14),
+                        const SizedBox(height: AppSpacing.md),
                         TextField(
                           controller: _nicknameController,
                           decoration: const InputDecoration(
@@ -186,7 +175,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                             prefixIcon: Icon(Icons.person_outline, size: 20),
                           ),
                         ),
-                        const SizedBox(height: 12),
+                        const SizedBox(height: AppSpacing.sm),
                         TextField(
                           controller: _emailController,
                           keyboardType: TextInputType.emailAddress,
@@ -195,7 +184,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                             prefixIcon: Icon(Icons.email_outlined, size: 20),
                           ),
                         ),
-                        const SizedBox(height: 16),
+                        const SizedBox(height: AppSpacing.md),
                         TappazoButton(
                           text: 'Entrar en Modo Local',
                           isLoading: isLoading && _showDevMode,
@@ -218,4 +207,3 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     );
   }
 }
-

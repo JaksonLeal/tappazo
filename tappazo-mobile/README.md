@@ -2,51 +2,64 @@
 
 Cliente móvil de Tappazo desarrollado con Flutter bajo los principios de **Clean Architecture**, comunicación REST/Dio y Riverpod.
 
+## Fuente de Verdad Visual (Design Tokens)
+
+La apariencia visual de la app se rige estrictamente por los tokens definidos en `design/design_tokens.yaml`:
+- **Colores:** `lib/presentation/theme/colors.dart` (Fondo Dark `#12131A`, Ámbar `#FFB300`, Lima `#BEF500`, Superficies `#1E1F26`).
+- **Tipografía:** `lib/presentation/theme/typography.dart` (Familia `Outfit`, display gigante de tapas, precios y jerarquía).
+- **Espaciado y Radios:** `lib/presentation/theme/spacing.dart` (Márgenes de 20px, radio de tarjetas de 12px, botones primarios de 56px).
+
 ## Arquitectura del Proyecto
 
 ```
 lib/
 ├── core/
-│   ├── constants/            # Constantes de red, URLs y colores
+│   ├── constants/            # Constantes de red, URLs
 │   ├── network/              # Cliente Dio con interceptor Bearer JWT
 │   ├── storage/              # FlutterSecureStorage para tokens y datos de sesión
-│   └── theme/                # Tema oscuro moderno con paleta cervecera/social
+│   └── utils/                # Formateador de moneda colombiana COP ($#.##0 COP)
 ├── domain/
-│   ├── entities/             # Entidades de dominio puro (User, AuthSession)
-│   ├── repositories/         # Contratos e interfaces de repositorio
-│   └── usecases/             # Casos de uso (Login Google, Login Local, Check Auth, Logout)
+│   ├── entities/             # Entidades puras (User, Game, GameParticipant, Mesa, NetDebt, DebtMovement)
+│   ├── repositories/         # Contratos e interfaces (AuthRepository, GameRepository, MesaRepository)
+│   └── usecases/             # Casos de uso de negocio con validación
 ├── data/
-│   ├── models/               # Modelos DTO con serialización JSON (Backend spec)
-│   ├── datasources/          # Fuente remota (API REST) y local (Secure Storage)
-│   └── repositories/         # Implementación de AuthRepository con GoogleSignIn
+│   ├── models/               # Modelos DTO con serialización JSON según endpoints Spring Boot
+│   ├── datasources/          # Fuentes remotas (Dio REST) y locales (SecureStorage)
+│   └── repositories/         # Implementaciones de repositorios
 └── presentation/
-    ├── providers/            # Riverpod StateNotifier e Inyección de Dependencias
+    ├── theme/                # Tokens generados: colors, typography, spacing y app_theme
+    ├── providers/            # Riverpod StateNotifiers (Auth, Game, Mesa)
     ├── screens/
-    │   ├── splash/           # Splash screen con verificación automática de token
-    │   ├── auth/             # Login con Google y bypass de desarrollo local
-    │   └── home/             # Home con datos de sesión activa y acciones
-    └── widgets/              # Componentes visuales reutilizables
+    │   ├── splash/           # Verificación inicial de sesión
+    │   ├── auth/             # Login con Google y bypass de prueba local
+    │   ├── home/             # Dashboard con modal de Crear Partida y Unirse con Código
+    │   ├── lobby/            # Sala de espera, código, participantes ordenados y ajustes host
+    │   └── mesa/             # Resumen de mesa, saldos netos y movimientos brutos de deuda
+    └── widgets/              # Componentes de UI (TappazoButton, GoogleSignInButton)
 ```
 
-## Flujo de Autenticación
+## Flujos y Módulos Implementados
 
-1. **Google Login:** El usuario selecciona su cuenta en el widget `GoogleSignInButton`. Se obtiene el `idToken`.
-2. **Backend Handshake:** Se envía el `idToken` a `POST /api/v1/auth/google`.
-3. **JWT Storage:** El backend responde con el JWT de Tappazo (`token`, `userId`, `nickname`, `email`), el cual se almacena de forma segura en `FlutterSecureStorage`.
-4. **Bearer Interceptor:** Todas las peticiones posteriores protegidas inyectan automáticamente el header:
-   ```http
-   Authorization: Bearer <tappazo-jwt>
-   ```
-5. **Modo Desarrollo Local:** Para pruebas rápidas contra `run-local.ps1` del backend sin configurar credenciales de Google OAuth en consola de Google Cloud, la app incluye un botón "Probar sin Google (Backend Local)" que consume `POST /api/v1/auth/local`.
+### 1. Autenticación (Sección 3)
+- Google Sign-In enviando el ID Token a `POST /api/v1/auth/google`.
+- Almacenamiento seguro del JWT de Tappazo en `FlutterSecureStorage`.
+- Inyección automática del header `Authorization: Bearer <tappazo-jwt>` en peticiones protegidas.
+- Modo local para desarrollo rápido con `POST /api/v1/auth/local`.
 
-## Configuración de Red
+### 2. Partidas y Lobby (Secciones 5, 6, 7, 8, 9, 10, 11 y 67)
+- **Creación:** `POST /api/v1/games` con precio de bebida, modalidad y capacidad (2–10).
+- **Unirse:** `POST /api/v1/games/join` mediante código alfanumérico.
+- **Detalles y participantes:** `GET /api/v1/games/{id}`, ordenando participantes alfabéticamente por nickname.
+- **Ajustes:** `PATCH /api/v1/games/{id}/settings` exclusivo para el anfitrión mientras la partida está en `LOBBY`.
 
-Por defecto la app apunta a:
-- Android Emulator: `http://10.0.2.2:8080/api/v1`
-- iOS / Web / Desktop: `http://localhost:8080/api/v1`
+### 3. Mesa y Resumen de Deudas (Secciones 50, 51 y 52)
+- **Estado de Mesa:** `GET /api/v1/mesas/{gameId}`.
+- **Saldos Netos:** `GET /api/v1/mesas/{gameId}/balances` con deuda total activa y consolidación quién le debe a quién.
+- **Movimientos Brutos:** `GET /api/v1/mesas/{gameId}/debts` con el historial de pérdidas de ronda.
 
-Para apuntar a una IP de red local o servidor remoto:
-```bash
-flutter run --dart-define=API_BASE_URL=http://192.168.1.100:8080/api/v1
+## Ejecución de Pruebas
+
+```powershell
+flutter test
+flutter analyze
 ```
-

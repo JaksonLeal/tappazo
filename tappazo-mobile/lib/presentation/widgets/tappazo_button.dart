@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
-import '../../core/constants/app_colors.dart';
+import '../theme/colors.dart';
+import '../theme/spacing.dart';
+import '../theme/typography.dart';
 
 class TappazoButton extends StatelessWidget {
   final String text;
@@ -24,36 +26,49 @@ class TappazoButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (isOutlined) {
+      final effectiveColor = textColor ?? AppColors.textPrimary;
       return OutlinedButton(
         onPressed: isLoading ? null : onPressed,
         style: OutlinedButton.styleFrom(
           side: BorderSide(
-            color: backgroundColor ?? AppColors.primary,
-            width: 1.5,
+            color: backgroundColor ?? AppColors.outline,
+            width: 1.0,
           ),
-          foregroundColor: textColor ?? AppColors.primary,
+          foregroundColor: effectiveColor,
+          minimumSize: const Size.fromHeight(AppSpacing.buttonPrimaryHeight),
+          shape: RoundedRectangleBorder(
+            borderRadius: AppSpacing.borderRadiusMd,
+          ),
         ),
-        child: _buildChild(context, textColor ?? AppColors.primary),
+        child: _buildChild(context, effectiveColor),
       );
     }
+
+    final effectiveBg = backgroundColor ?? AppColors.primary;
+    final effectiveFg = textColor ?? AppColors.onPrimaryContainer;
 
     return ElevatedButton(
       onPressed: isLoading ? null : onPressed,
       style: ElevatedButton.styleFrom(
-        backgroundColor: backgroundColor ?? AppColors.primary,
-        foregroundColor: textColor ?? Colors.black,
+        backgroundColor: effectiveBg,
+        foregroundColor: effectiveFg,
+        minimumSize: const Size.fromHeight(AppSpacing.buttonPrimaryHeight),
+        shape: RoundedRectangleBorder(
+          borderRadius: AppSpacing.borderRadiusMd,
+        ),
+        elevation: 0,
       ),
-      child: _buildChild(context, textColor ?? Colors.black),
+      child: _buildChild(context, effectiveFg),
     );
   }
 
   Widget _buildChild(BuildContext context, Color contentColor) {
     if (isLoading) {
       return SizedBox(
-        height: 22,
-        width: 22,
+        height: 20,
+        width: 20,
         child: CircularProgressIndicator(
-          strokeWidth: 2.5,
+          strokeWidth: 2.0,
           valueColor: AlwaysStoppedAnimation<Color>(contentColor),
         ),
       );
@@ -64,14 +79,10 @@ class TappazoButton extends StatelessWidget {
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           Icon(icon, size: 20, color: contentColor),
-          const SizedBox(width: 10),
+          const SizedBox(width: AppSpacing.sm),
           Text(
             text,
-            style: TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.bold,
-              color: contentColor,
-            ),
+            style: AppTypography.labelLg.copyWith(color: contentColor),
           ),
         ],
       );
@@ -79,12 +90,7 @@ class TappazoButton extends StatelessWidget {
 
     return Text(
       text,
-      style: TextStyle(
-        fontSize: 16,
-        fontWeight: FontWeight.bold,
-        color: contentColor,
-      ),
+      style: AppTypography.labelLg.copyWith(color: contentColor),
     );
   }
 }
-

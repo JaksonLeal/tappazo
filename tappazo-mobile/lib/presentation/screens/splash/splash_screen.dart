@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../../../core/constants/app_colors.dart';
 import '../../providers/auth_providers.dart';
 import '../../providers/auth_state.dart';
+import '../../theme/colors.dart';
+import '../../theme/spacing.dart';
+import '../../theme/typography.dart';
 import '../auth/login_screen.dart';
 import '../home/home_screen.dart';
 
@@ -17,7 +19,6 @@ class _SplashScreenState extends ConsumerState<SplashScreen> {
   @override
   void initState() {
     super.initState();
-    // Ejecuta la verificación de sesión tan pronto como el primer frame se renderiza
     WidgetsBinding.instance.addPostFrameCallback((_) {
       ref.read(authNotifierProvider.notifier).checkAuthStatus();
     });
@@ -25,7 +26,6 @@ class _SplashScreenState extends ConsumerState<SplashScreen> {
 
   @override
   Widget build(BuildContext context) {
-    // Escucha cambios en el estado de autenticación para redirigir
     ref.listen<AuthState>(authNotifierProvider, (previous, next) {
       if (next is Authenticated) {
         Navigator.of(context).pushReplacement(
@@ -44,14 +44,13 @@ class _SplashScreenState extends ConsumerState<SplashScreen> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            // Icono / Tapa ilustrada
             Container(
               width: 110,
               height: 110,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
                 gradient: const LinearGradient(
-                  colors: [AppColors.beerGold, AppColors.primary],
+                  colors: [AppColors.secondary, AppColors.primary],
                   begin: Alignment.topLeft,
                   end: Alignment.bottomRight,
                 ),
@@ -66,29 +65,23 @@ class _SplashScreenState extends ConsumerState<SplashScreen> {
               child: const Icon(
                 Icons.sports_bar_rounded,
                 size: 54,
-                color: Colors.black87,
+                color: AppColors.onPrimaryContainer,
               ),
             ),
-            const SizedBox(height: 28),
-            const Text(
+            const SizedBox(height: AppSpacing.lg),
+            Text(
               'TAPPAZO',
-              style: TextStyle(
-                fontSize: 32,
-                fontWeight: FontWeight.w900,
+              style: AppTypography.capDisplay.copyWith(
+                color: AppColors.primary,
                 letterSpacing: 4,
-                color: AppColors.textPrimary,
               ),
             ),
-            const SizedBox(height: 8),
-            const Text(
+            const SizedBox(height: AppSpacing.xs),
+            Text(
               '¿Quién paga la ronda?',
-              style: TextStyle(
-                fontSize: 15,
-                fontWeight: FontWeight.w500,
-                color: AppColors.textSecondary,
-              ),
+              style: AppTypography.headlineSm.copyWith(color: AppColors.textSecondary),
             ),
-            const SizedBox(height: 48),
+            const SizedBox(height: AppSpacing.xl),
             const SizedBox(
               width: 28,
               height: 28,
@@ -103,4 +96,3 @@ class _SplashScreenState extends ConsumerState<SplashScreen> {
     );
   }
 }
-

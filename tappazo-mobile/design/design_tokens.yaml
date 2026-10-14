@@ -1,0 +1,73 @@
+# TAPPAZO — Design Tokens
+# Fuente: HTML/CSS real exportado por Stitch (tailwind.config embebido en el
+# export), no el resumen .md — el HTML es lo que Stitch literalmente renderizó.
+# Única fuente de verdad para paleta, tipografía, radios y espaciado.
+# lib/presentation/theme/{colors,typography,spacing}.dart se generan desde aquí.
+
+theme_name: "Dark Premium / Neon Accent"
+
+colors:
+  # Fondos / superficies
+  background: "#12131A"
+  surface: "#12131A"
+  surface_container_lowest: "#0D0E14"
+  surface_container_low: "#1A1B22"
+  surface_container: "#1E1F26"
+  surface_container_high: "#292931"
+  surface_container_highest: "#33343C"
+  surface_bright: "#383940"
+
+  # Acentos semánticos
+  primary: "#FFB300"              # ámbar — botón principal, tapas ganadoras
+  on_primary_container: "#6B4900" # texto sobre el botón ámbar
+  secondary: "#BEF500"            # lima — aprobación, quórum, en vivo
+  on_secondary: "#273500"
+  error: "#FFB4AB"                # error suave (badges, avisos)
+  error_container: "#93000A"      # error fuerte (fondos llenos)
+
+  # Texto
+  text_primary: "#E3E1EB"
+  text_secondary: "#D6C4AC"
+  outline: "#9E8E78"
+
+typography:
+  font_family: "Outfit"
+  icon_font: "Material Symbols Outlined"
+
+  cap_display:        { size: 44, line_height: 44, weight: 900, tracking: -0.03em }  # número gigante de tapa
+  currency_display:   { size: 26, line_height: 32, weight: 800, tracking: -0.01em }
+  headline_xl:        { size: 40, line_height: 48, weight: 800, tracking: -0.02em }
+  headline_xl_mobile: { size: 32, line_height: 40, weight: 800, tracking: -0.02em }
+  headline_lg:        { size: 28, line_height: 36, weight: 700, tracking: -0.01em }
+  headline_md:        { size: 22, line_height: 28, weight: 700 }
+  headline_sm:        { size: 18, line_height: 24, weight: 600 }
+  body_lg:            { size: 16, line_height: 24, weight: 400 }
+  body_md:            { size: 14, line_height: 20, weight: 400 }
+  body_sm:            { size: 12, line_height: 16, weight: 400 }
+  label_lg:           { size: 16, line_height: 20, weight: 700, tracking: 0.02em }
+  label_md:           { size: 14, line_height: 18, weight: 600, tracking: 0.01em }
+  label_sm:           { size: 11, line_height: 14, weight: 600, tracking: 0.05em }
+
+radius:
+  sm: 8
+  md: 12     # usado en tarjetas y contenedores (rounded-xl del HTML real)
+  full: 9999 # pills / badges
+
+spacing:
+  xs: 4
+  sm: 8
+  md: 16
+  lg: 24
+  xl: 32
+  margin: 20   # padding lateral de pantalla
+  gutter: 16   # separación entre elementos en fila
+
+touch_targets:
+  button_primary_height: 56
+  avatar: 48
+  icon_button: 44
+
+currency:
+  code: "COP"
+  decimals: 0
+  format: "$#.##0 COP"
