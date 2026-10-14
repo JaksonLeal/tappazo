@@ -56,6 +56,12 @@ class GameSessionState {
   final bool gameFinished;
   final GameNotice? notice;
 
+  /// Hay una interfaz de red activa en el dispositivo.
+  final bool isOnline;
+
+  /// Ya se obtuvo al menos una vez el estado autoritativo por REST.
+  final bool hasSynced;
+
   const GameSessionState({
     this.connection = RealtimeConnectionStatus.disconnected,
     this.round,
@@ -69,9 +75,14 @@ class GameSessionState {
     this.myArbiterVote,
     this.gameFinished = false,
     this.notice,
+    this.isOnline = true,
+    this.hasSynced = false,
   });
 
   bool get isConnected => connection == RealtimeConnectionStatus.connected;
+
+  /// Las acciones en tiempo real (revelar, votar) requieren red y STOMP.
+  bool get canAct => isOnline && isConnected;
 
   GamePhase get phase {
     if (gameFinished) return GamePhase.finished;
@@ -114,6 +125,8 @@ class GameSessionState {
     Object? myArbiterVote = _unset,
     bool? gameFinished,
     GameNotice? notice,
+    bool? isOnline,
+    bool? hasSynced,
   }) {
     return GameSessionState(
       connection: connection ?? this.connection,
@@ -129,6 +142,8 @@ class GameSessionState {
       myArbiterVote: identical(myArbiterVote, _unset) ? this.myArbiterVote : myArbiterVote as TieBreakDecision?,
       gameFinished: gameFinished ?? this.gameFinished,
       notice: notice ?? this.notice,
+      isOnline: isOnline ?? this.isOnline,
+      hasSynced: hasSynced ?? this.hasSynced,
     );
   }
 }

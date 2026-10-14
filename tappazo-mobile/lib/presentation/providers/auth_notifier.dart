@@ -85,6 +85,16 @@ class AuthNotifier extends StateNotifier<AuthState> {
     }
   }
 
+  /// El backend respondió 401 (JWT expirado o inválido). El interceptor ya
+  /// limpió el almacenamiento; aquí solo se refleja en el estado para que la
+  /// UI vuelva al login. Se ignora si no había sesión activa (p. ej. un 401
+  /// durante el propio login, que ya se maneja allí).
+  void sessionExpired() {
+    if (state is Authenticated) {
+      state = const Unauthenticated();
+    }
+  }
+
   /// Cierra la sesión activa
   Future<void> signOut() async {
     state = const AuthLoading(message: 'Cerrando sesión...');

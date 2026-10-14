@@ -11,6 +11,10 @@ abstract class GameRealtimeRepository {
   Future<void> connect();
   Future<void> disconnect();
 
+  /// Reconecta sin esperar el backoff. Con [force] descarta un socket que
+  /// aparenta estar vivo (tras un corte de red suele estar muerto).
+  Future<void> reconnectNow({bool force = false});
+
   Stream<GameEvent> watchGame(String gameId);
 
   void submitAttempt({

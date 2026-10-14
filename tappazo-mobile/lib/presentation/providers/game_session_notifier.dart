@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../core/network/error_messages.dart';
 import '../../domain/entities/game_decisions.dart';
 import '../../domain/entities/game_details_entity.dart';
 import '../../domain/entities/game_event.dart';
@@ -27,6 +28,7 @@ class GameSessionNotifier extends StateNotifier<GameSessionState> {
   final CastTieBreakVoteUseCase _castTieBreakVote;
   final CastRevealVoteUseCase _castRevealVote;
   final Future<GameDetailsEntity?> Function() _resync;
+  final Stream<bool>? _networkChanges;
 
   /// Tiempo máximo esperando el eco ATTEMPT_SUBMITTED. El backend no envía
   /// ERROR por STOMP cuando rechaza un intento, así que se avisa al usuario.
@@ -34,6 +36,12 @@ class GameSessionNotifier extends StateNotifier<GameSessionState> {
 
   StreamSubscription<RealtimeConnectionStatus>? _statusSub;
   StreamSubscription<GameEvent>? _eventsSub;
+  StreamSubscription<bool>? _networkSub;
+  DateTime? _pausedAt;
+  bool _wasOffline = false;
+
+  /// Si la app estuvo en segundo plano más que esto, el socket se recrea.
+  static const Duration staleSocketAfter = Duration(seconds: 20);
   Timer? _echoTimer;
   int _noticeSeq = 0;
   bool _hasConnectedOnce = false;
@@ -47,7 +55,9 @@ class GameSessionNotifier extends StateNotifier<GameSessionState> {
     required CastTieBreakVoteUseCase castTieBreakVote,
     required CastRevealVoteUseCase castRevealVote,
     required Future<GameDetailsEntity?> Function() resync,
+    Stream<bool>? networkChanges,
   })  : _realtime = realtime,
+        _networkChanges = networkChanges,
         _submitAttempt = submitAttempt,
         _castTieBreakVote = castTieBreakVote,
         _castRevealVote = castRevealVote,
@@ -59,6 +69,7 @@ class GameSessionNotifier extends StateNotifier<GameSessionState> {
   void start() {
     _statusSub = _realtime.connectionStatus.listen(_onConnectionStatus);
     _eventsSub = _realtime.watchGame(gameId).listen(_onEvent);
+    _networkSub = _networkChanges?.listen(_onNetworkChanged);
     unawaited(_connect());
     unawaited(resync());
   }
@@ -72,7 +83,41 @@ class GameSessionNotifier extends StateNotifier<GameSessionState> {
   }
 
   /// Reintento manual desde la UI.
-  Future<void> reconnect() => _connect();
+  Future<void> reconnect() async {
+    if (state.connection == RealtimeConnectionStatus.disconnected) {
+      await _connect();
+    } else {
+      await _realtime.reconnectNow();
+    }
+  }
+
+  // ─── Red y ciclo de vida de la app ──────────────────────────────────────────
+
+  void _onNetworkChanged(bool online) {
+    if (!mounted || online == state.isOnline) return;
+    state = state.copyWith(isOnline: online);
+    if (!online) {
+      _wasOffline = true;
+      return;
+    }
+    if (_wasOffline) {
+      _wasOffline = false;
+      // El socket previo casi seguro murió con la red: forzar uno nuevo.
+      unawaited(_realtime.reconnectNow(force: true));
+      unawaited(resync());
+    }
+  }
+
+  void onAppPaused() => _pausedAt = DateTime.now();
+
+  void onAppResumed() {
+    if (!mounted) return;
+    final pausedAt = _pausedAt;
+    _pausedAt = null;
+    final stale = pausedAt != null && DateTime.now().difference(pausedAt) > staleSocketAfter;
+    unawaited(_realtime.reconnectNow(force: stale));
+    unawaited(resync());
+  }
 
   void _onConnectionStatus(RealtimeConnectionStatus status) {
     if (!mounted) return;
@@ -100,6 +145,7 @@ class GameSessionNotifier extends StateNotifier<GameSessionState> {
       if (details.game.state == GameState.finished) {
         state = state.copyWith(gameFinished: true);
       }
+      if (!state.hasSynced) state = state.copyWith(hasSynced: true);
     } catch (_) {
       // Fallo REST puntual: el siguiente evento o reconexión vuelve a intentarlo.
     } finally {
@@ -173,6 +219,8 @@ class GameSessionNotifier extends StateNotifier<GameSessionState> {
     final keepTie = round.isTieBreakRound && previousTie != null && previousTie.isResolved;
     state = GameSessionState(
       connection: state.connection,
+      isOnline: state.isOnline,
+      hasSynced: state.hasSynced,
       round: round,
       tieBreak: keepTie ? previousTie : null,
       notice: state.notice,
@@ -228,8 +276,12 @@ class GameSessionNotifier extends StateNotifier<GameSessionState> {
       _notify('No hay una ronda activa.', isError: true);
       return false;
     }
+    if (!state.isOnline) {
+      _notify('Sin internet. Tu intento se podrá enviar cuando vuelva la conexión.', isError: true);
+      return false;
+    }
     if (!state.isConnected) {
-      _notify('Sin conexión en tiempo real. Espera a que se reconecte.', isError: true);
+      _notify('Reconectando con la mesa. Inténtalo en unos segundos.', isError: true);
       return false;
     }
 
@@ -276,7 +328,9 @@ class GameSessionNotifier extends StateNotifier<GameSessionState> {
       return true;
     } catch (e) {
       if (!mounted) return false;
-      final message = e is RevealAttemptValidationException ? e.message : 'No se pudo enviar el intento: $e';
+      final message = e is RevealAttemptValidationException
+          ? e.message
+          : 'No se pudo enviar el intento. ${describeError(e, fallback: 'Inténtalo de nuevo.')}';
       state = state.copyWith(
         submission: RevealSubmission(
           stage: SubmissionStage.failed,
@@ -318,7 +372,7 @@ class GameSessionNotifier extends StateNotifier<GameSessionState> {
       _castRevealVote.execute(gameId: gameId, revealAttemptId: attempt.id, decision: decision);
       state = state.copyWith(myVotes: {...state.myVotes, attempt.id: decision});
     } catch (e) {
-      _notify('No se pudo enviar tu voto: $e', isError: true);
+      _notify('No se pudo enviar tu voto. ${describeError(e, fallback: 'Revisa tu conexión e inténtalo de nuevo.')}', isError: true);
     }
   }
 
@@ -331,7 +385,7 @@ class GameSessionNotifier extends StateNotifier<GameSessionState> {
       state = asArbiter ? state.copyWith(myArbiterVote: decision) : state.copyWith(myTieBreakVote: decision);
       _notify(asArbiter ? 'Decisión enviada.' : 'Voto enviado: ${decision.label}.');
     } catch (e) {
-      _notify('No se pudo enviar tu voto: $e', isError: true);
+      _notify('No se pudo enviar tu voto. ${describeError(e, fallback: 'Revisa tu conexión e inténtalo de nuevo.')}', isError: true);
     }
   }
 
@@ -345,6 +399,7 @@ class GameSessionNotifier extends StateNotifier<GameSessionState> {
     _echoTimer?.cancel();
     _statusSub?.cancel();
     _eventsSub?.cancel();
+    _networkSub?.cancel();
     unawaited(_realtime.disconnect());
     super.dispose();
   }

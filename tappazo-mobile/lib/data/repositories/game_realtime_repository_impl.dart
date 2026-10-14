@@ -25,6 +25,9 @@ class GameRealtimeRepositoryImpl implements GameRealtimeRepository {
   Future<void> disconnect() => _remote.disconnect();
 
   @override
+  Future<void> reconnectNow({bool force = false}) => _remote.reconnectNow(force: force);
+
+  @override
   Stream<GameEvent> watchGame(String gameId) => _remote.watchGame(gameId);
 
   @override

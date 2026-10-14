@@ -42,6 +42,14 @@ class FakeRealtime implements GameRealtimeRepository {
   Future<void> connect() async => setStatus(RealtimeConnectionStatus.connected);
   @override
   Future<void> disconnect() async {}
+
+  final reconnects = <bool>[];
+  @override
+  Future<void> reconnectNow({bool force = false}) async {
+    reconnects.add(force);
+    setStatus(RealtimeConnectionStatus.connecting);
+    setStatus(RealtimeConnectionStatus.connected);
+  }
   @override
   Stream<GameEvent> watchGame(String gameId) => eventsCtrl.stream;
   @override
@@ -113,6 +121,7 @@ void main() {
   late FakeMedia media;
   late GameSessionNotifier notifier;
   late int resyncCalls;
+  late StreamController<bool> network;
   RoundEntity? restRound;
 
   setUp(() {
@@ -120,6 +129,7 @@ void main() {
     media = FakeMedia();
     resyncCalls = 0;
     restRound = null;
+    network = StreamController<bool>.broadcast();
     notifier = GameSessionNotifier(
       gameId: 'g1',
       currentUserId: 'me',
@@ -131,6 +141,7 @@ void main() {
         resyncCalls++;
         return details(round: restRound);
       },
+      networkChanges: network.stream,
     )..start();
   });
 
@@ -267,5 +278,53 @@ void main() {
     notifier.castRevealVote(attempt, RevealVoteDecision.yes);
     expect(notifier.state.myVotes, isEmpty);
     expect(notifier.state.notice?.isError, isTrue);
+  });
+
+  test('sin red: bloquea acciones; al volver fuerza reconexión STOMP y resync', () async {
+    realtime.emit(const RoundStartedEvent(gameId: 'g1', round: round1));
+    await pump();
+
+    network.add(false);
+    await pump();
+    expect(notifier.state.isOnline, isFalse);
+    expect(notifier.state.canAct, isFalse);
+    expect(await notifier.submitAttempt(proposedNumber: 5, photoBytes: [1]), isFalse);
+    expect(notifier.state.notice?.message, contains('Sin internet'));
+    expect(media.uploads, 0);
+
+    final before = resyncCalls;
+    network.add(true);
+    await pump();
+    expect(notifier.state.isOnline, isTrue);
+    expect(realtime.reconnects, [true], reason: 'socket viejo descartado');
+    expect(resyncCalls, greaterThan(before));
+    expect(notifier.state.canAct, isTrue);
+  });
+
+  test('volver a primer plano reconecta (forzado si estuvo mucho tiempo fuera)', () async {
+    await pump();
+    notifier.onAppResumed();
+    await pump();
+    expect(realtime.reconnects, [false]);
+  });
+
+  test('hasSynced solo se activa cuando responde el REST (estado de carga)', () async {
+    final pending = Completer<GameDetailsEntity?>();
+    final slow = GameSessionNotifier(
+      gameId: 'g1',
+      currentUserId: 'me',
+      realtime: realtime,
+      submitAttempt: SubmitRevealAttemptUseCase(realtime, media),
+      castTieBreakVote: CastTieBreakVoteUseCase(realtime),
+      castRevealVote: CastRevealVoteUseCase(realtime),
+      resync: () => pending.future,
+    )..start();
+    await pump();
+    expect(slow.state.hasSynced, isFalse, reason: 'la UI muestra "Sincronizando…"');
+    pending.complete(details(round: round1));
+    await pump();
+    expect(slow.state.hasSynced, isTrue);
+    expect(slow.state.phase, GamePhase.revealing);
+    slow.dispose();
   });
 }

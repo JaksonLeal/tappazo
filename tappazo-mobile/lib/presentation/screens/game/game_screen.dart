@@ -17,9 +17,11 @@ import '../../theme/spacing.dart';
 import '../../theme/typography.dart';
 import '../../widgets/game/attempt_vote_card.dart';
 import '../../widgets/game/connection_badge.dart';
+import '../../widgets/game/connection_banner.dart';
 import '../../widgets/game/game_card.dart';
 import '../../widgets/game/round_resolution_panel.dart';
 import '../../widgets/game/tie_break_panel.dart';
+import '../../widgets/game/voice_control_bar.dart';
 import '../../widgets/tappazo_button.dart';
 import '../mesa/mesa_screen.dart';
 import 'reveal_capture_screen.dart';
@@ -74,21 +76,46 @@ class GameScreen extends ConsumerWidget {
           ),
         ],
       ),
-      body: RefreshIndicator(
-        color: AppColors.primary,
-        backgroundColor: AppColors.surfaceContainer,
-        onRefresh: notifier.resync,
-        child: AnimatedSwitcher(
-          duration: const Duration(milliseconds: 250),
-          child: ListView(
-            key: ValueKey(session.phase),
-            physics: const AlwaysScrollableScrollPhysics(),
-            padding: const EdgeInsets.symmetric(horizontal: AppSpacing.margin, vertical: AppSpacing.md),
-            children: view.build(context),
+      body: Column(
+        children: [
+          ConnectionBanner(
+            isOnline: session.isOnline,
+            connection: session.connection,
+            onRetry: notifier.reconnect,
           ),
-        ),
+          Expanded(
+            child: RefreshIndicator(
+              color: AppColors.primary,
+              backgroundColor: AppColors.surfaceContainer,
+              onRefresh: notifier.resync,
+              child: AnimatedSwitcher(
+                duration: const Duration(milliseconds: 250),
+                child: ListView(
+                  key: ValueKey('${session.phase}-${session.hasSynced}'),
+                  physics: const AlwaysScrollableScrollPhysics(),
+                  padding: const EdgeInsets.symmetric(horizontal: AppSpacing.margin, vertical: AppSpacing.md),
+                  children: view.build(context),
+                ),
+              ),
+            ),
+          ),
+        ],
       ),
+      // Voz de la mesa (Sección 27): solo jugadores, mientras la partida sigue.
+      bottomNavigationBar: _canUseVoice(details, userId, session)
+          ? VoiceControlBar(
+              gameId: gameId,
+              currentUserId: userId,
+              nameOf: (id) => details?.displayNameFor(id) ?? id,
+            )
+          : null,
     );
+  }
+
+  bool _canUseVoice(GameDetailsEntity? details, String userId, GameSessionState session) {
+    if (session.phase == GamePhase.finished) return false;
+    final me = details?.participantFor(userId);
+    return me != null && me.isPlayer;
   }
 
   String _title(GameSessionState s) => switch (s.phase) {
@@ -123,7 +150,7 @@ class _GameView {
   List<Widget> build(BuildContext context) {
     final round = session.round;
     return switch (session.phase) {
-      GamePhase.waitingForRound => _waiting(context),
+      GamePhase.waitingForRound => session.hasSynced ? _waiting(context) : _loading(),
       GamePhase.revealing => [
           if (round != null) _roundHeader(round),
           const SizedBox(height: AppSpacing.md),
@@ -319,12 +346,12 @@ class _GameView {
           TappazoButton(
             text: 'Revelar mi tapa',
             icon: Icons.photo_camera_rounded,
-            onPressed: session.isConnected ? () => _openCapture(context, nextAttempt) : null,
+            onPressed: session.canAct ? () => _openCapture(context, nextAttempt) : null,
           ),
-          if (!session.isConnected) ...[
+          if (!session.canAct) ...[
             const SizedBox(height: AppSpacing.sm),
             Text(
-              'Esperando conexión en tiempo real…',
+              session.isOnline ? 'Esperando conexión en tiempo real…' : 'Sin internet: podrás revelar al reconectar.',
               textAlign: TextAlign.center,
               style: AppTypography.bodySm,
             ),
@@ -480,7 +507,7 @@ class _GameView {
         canVoteAsTied: canVoteAsTied,
         myVote: session.myTieBreakVote,
         myArbiterVote: session.myArbiterVote,
-        isConnected: session.isConnected,
+        isConnected: session.canAct,
         onVote: (decision, {required bool asArbiter}) =>
             notifier.castTieBreakVote(decision, asArbiter: asArbiter),
       ),
@@ -501,7 +528,7 @@ class _GameView {
           canVoteAsTied: false,
           myVote: session.myTieBreakVote,
           myArbiterVote: session.myArbiterVote,
-          isConnected: session.isConnected,
+          isConnected: session.canAct,
           onVote: (_, {required bool asArbiter}) {},
         ),
         const SizedBox(height: AppSpacing.lg),
@@ -525,6 +552,23 @@ class _GameView {
       ),
     ];
   }
+
+  List<Widget> _loading() => [
+        const SizedBox(height: AppSpacing.xl * 2),
+        const Center(
+          child: SizedBox(
+            width: 32,
+            height: 32,
+            child: CircularProgressIndicator(strokeWidth: 2.5, color: AppColors.primary),
+          ),
+        ),
+        const SizedBox(height: AppSpacing.md),
+        Text(
+          session.isOnline ? 'Sincronizando con la mesa…' : 'Esperando conexión a internet…',
+          textAlign: TextAlign.center,
+          style: AppTypography.bodyMd.copyWith(color: AppColors.textSecondary),
+        ),
+      ];
 
   List<Widget> _waiting(BuildContext context) => [
         const SizedBox(height: AppSpacing.xl),

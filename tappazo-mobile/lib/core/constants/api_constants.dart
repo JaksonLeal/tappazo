@@ -30,6 +30,13 @@ class ApiConstants {
   static const String mediaUpload = '/media/presigned-upload';
   static const String mediaDownload = '/media/presigned-download';
 
+  // ─── Voz / LiveKit (Secciones 27 y 67) ─────────────────────────────────────
+  static String voiceToken(String gameId) => '$games/$gameId/voice-token';
+
+  /// Sustituye el `serverUrl` que devuelve el backend, útil en emulador o
+  /// dispositivo físico: --dart-define=LIVEKIT_URL=ws://192.168.1.10:7880
+  static const String liveKitUrlOverride = String.fromEnvironment('LIVEKIT_URL');
+
   // ─── WebSocket / STOMP (Sección 68) ────────────────────────────────────────
   // Permite sobreescribir mediante --dart-define=WS_URL=ws://host:8080/ws
   static const String _envWsUrl = String.fromEnvironment('WS_URL');

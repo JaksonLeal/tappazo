@@ -17,6 +17,9 @@ abstract class GameRealtimeDataSource {
   Future<void> connect();
   Future<void> disconnect();
 
+  /// Reconecta sin esperar el backoff (p. ej. al volver la red).
+  Future<void> reconnectNow({bool force = false});
+
   /// Suscribe a `/topic/game/{gameId}` mientras haya oyentes.
   Stream<GameEvent> watchGame(String gameId);
 
@@ -67,6 +70,9 @@ class GameRealtimeDataSourceImpl implements GameRealtimeDataSource {
 
   @override
   Future<void> disconnect() => _client.disconnect();
+
+  @override
+  Future<void> reconnectNow({bool force = false}) => _client.reconnectNow(force: force);
 
   @override
   Stream<GameEvent> watchGame(String gameId) {

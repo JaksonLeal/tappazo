@@ -27,8 +27,11 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
 
     ref.listen<AuthState>(authNotifierProvider, (previous, next) {
       if (next is Unauthenticated) {
-        Navigator.of(context).pushReplacement(
+        // Limpia toda la pila (sala, partida, mesa) para no dejar pantallas
+        // huérfanas cuando la sesión expira desde una pantalla profunda.
+        Navigator.of(context).pushAndRemoveUntil(
           MaterialPageRoute(builder: (_) => const LoginScreen()),
+          (_) => false,
         );
       }
     });

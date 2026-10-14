@@ -1,6 +1,8 @@
+import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/constants/api_constants.dart';
+import '../../core/network/network_monitor.dart';
 import '../../data/datasources/game_realtime_datasource.dart';
 import '../../data/datasources/media_remote_datasource.dart';
 import '../../data/datasources/stomp/stomp_client.dart';
@@ -17,6 +19,10 @@ import 'game_providers.dart';
 import 'game_session_notifier.dart';
 import 'game_session_state.dart';
 import 'game_state.dart';
+
+// ─── Red ─────────────────────────────────────────────────────────────────────
+
+final networkMonitorProvider = Provider<NetworkMonitor>((ref) => ConnectivityNetworkMonitor());
 
 // ─── Tiempo real (STOMP) ─────────────────────────────────────────────────────
 
@@ -98,7 +104,15 @@ final gameSessionProvider =
       final gameState = ref.read(gameNotifierProvider);
       return gameState is GameLoaded && gameState.game.id == gameId ? gameState.details : null;
     },
+    networkChanges: ref.watch(networkMonitorProvider).watchOnline(),
   );
   notifier.start();
+
+  // Al volver a primer plano se verifica/recupera el socket y se resincroniza.
+  final lifecycle = AppLifecycleListener(
+    onPause: notifier.onAppPaused,
+    onResume: notifier.onAppResumed,
+  );
+  ref.onDispose(lifecycle.dispose);
   return notifier;
 });

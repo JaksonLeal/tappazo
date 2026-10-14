@@ -124,4 +124,32 @@ void main() {
     expect(broker.frames.where((f) => f.command == 'SUBSCRIBE').length, 2);
     await client.dispose();
   });
+
+  test('reconnectNow(force) recrea el socket y re-suscribe aunque parezca conectado', () async {
+    final client = StompClient(url: broker.url, tokenProvider: () async => 'jwt-123');
+    var messages = 0;
+    client.subscribe('/topic/game/g1', (_) => messages++);
+    await client.connect();
+    await Future<void>.delayed(const Duration(milliseconds: 100));
+    expect(messages, 1);
+
+    await client.reconnectNow(); // sin force y conectado: no hace nada
+    expect(broker.frames.where((f) => f.command == 'CONNECT').length, 1);
+
+    await client.reconnectNow(force: true);
+    await Future<void>.delayed(const Duration(milliseconds: 100));
+    expect(client.status, StompConnectionStatus.connected);
+    expect(broker.frames.where((f) => f.command == 'CONNECT').length, 2);
+    expect(messages, 2);
+    await client.dispose();
+  });
+
+  test('reconnectNow tras cierre manual no reabre la conexión', () async {
+    final client = StompClient(url: broker.url, tokenProvider: () async => 'jwt-123');
+    await client.connect();
+    await client.disconnect();
+    await client.reconnectNow(force: true);
+    expect(client.status, StompConnectionStatus.disconnected);
+    await client.dispose();
+  });
 }

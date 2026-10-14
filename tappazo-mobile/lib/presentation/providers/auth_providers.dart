@@ -18,10 +18,12 @@ final secureStorageServiceProvider = Provider<SecureStorageService>((ref) {
   return SecureStorageService();
 });
 
-final apiClientProvider = Provider<ApiClient>((ref) {
+final Provider<ApiClient> apiClientProvider = Provider<ApiClient>((ref) {
   final storage = ref.watch(secureStorageServiceProvider);
   return ApiClient(
     storageService: storage,
+    // Lectura diferida: se ejecuta al recibir un 401, no al crear el provider.
+    onUnauthorized: () => ref.read(authNotifierProvider.notifier).sessionExpired(),
   );
 });
 

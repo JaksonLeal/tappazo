@@ -86,6 +86,29 @@ class StompClient {
     await _open();
   }
 
+  /// Reintenta ya mismo, sin esperar el backoff pendiente. Pensado para cuando
+  /// vuelve la red o la app regresa a primer plano. No hace nada si se cerró
+  /// manualmente o si ya hay un handshake en curso.
+  ///
+  /// Con [force] se descarta también un socket que aparenta estar conectado:
+  /// tras un corte de red el TCP anterior suele quedar muerto sin aviso.
+  Future<void> reconnectNow({bool force = false}) async {
+    if (_disposed || _manuallyClosed) return;
+    if (_connectedCompleter != null && !_connectedCompleter!.isCompleted) return;
+    if (_status == StompConnectionStatus.connected) {
+      if (!force) return;
+      _generation++; // invalida callbacks del socket viejo
+      _teardownSocket();
+    }
+    _reconnectTimer?.cancel();
+    _reconnectAttempt = 0;
+    try {
+      await _open();
+    } catch (_) {
+      // _open() ya notificó el error y programó el siguiente intento.
+    }
+  }
+
   Future<void> _open() async {
     final generation = ++_generation;
     final completer = Completer<void>();

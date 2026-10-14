@@ -13,6 +13,7 @@ import '../../theme/colors.dart';
 import '../../theme/spacing.dart';
 import '../../theme/typography.dart';
 import '../../widgets/game/connection_badge.dart';
+import '../../widgets/game/connection_banner.dart';
 import '../../widgets/tappazo_button.dart';
 import '../game/game_screen.dart';
 import '../mesa/mesa_screen.dart';
@@ -104,7 +105,21 @@ class _LobbyScreenState extends ConsumerState<LobbyScreen> {
           ),
         ],
       ),
-      body: switch (gameState) {
+      body: Column(
+        children: [
+          ConnectionBanner(
+            isOnline: session.isOnline,
+            connection: session.connection,
+            onRetry: ref.read(sessionProvider.notifier).reconnect,
+          ),
+          Expanded(child: _buildBody(gameState, currentUserId)),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildBody(GameStateData gameState, String currentUserId) {
+    return switch (gameState) {
         GameLoading(:final message) => Center(
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
@@ -152,8 +167,7 @@ class _LobbyScreenState extends ConsumerState<LobbyScreen> {
             isUpdatingSettings,
           ),
         _ => const SizedBox.shrink(),
-      },
-    );
+      };
   }
 
   Widget _buildLobbyContent(
