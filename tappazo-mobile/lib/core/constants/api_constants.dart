@@ -28,6 +28,35 @@ class ApiConstants {
   static const String joinGame = '/games/join';
   static const String mesas = '/mesas';
   static const String mediaUpload = '/media/presigned-upload';
+  static const String mediaDownload = '/media/presigned-download';
+
+  // ─── WebSocket / STOMP (Sección 68) ────────────────────────────────────────
+  // Permite sobreescribir mediante --dart-define=WS_URL=ws://host:8080/ws
+  static const String _envWsUrl = String.fromEnvironment('WS_URL');
+
+  /// Endpoint STOMP nativo `/ws`, derivado de [baseUrl] si no se define WS_URL.
+  static String get wsUrl {
+    if (_envWsUrl.isNotEmpty) {
+      return _envWsUrl;
+    }
+    final api = Uri.parse(baseUrl);
+    return api
+        .replace(
+          scheme: api.scheme == 'https' ? 'wss' : 'ws',
+          path: '/ws',
+        )
+        .toString();
+  }
+
+  static String gameTopic(String gameId) => '/topic/game/$gameId';
+  static String attemptDestination(String gameId) => '/app/game/$gameId/attempt';
+  static String tieBreakVoteDestination(String gameId) => '/app/game/$gameId/tiebreak-vote';
+
+  /// Destino propuesto para votar SÍ/NO sobre un RevealAttempt.
+  /// El backend todavía NO tiene handler para esta acción (Sección 67), por
+  /// lo que el envío queda desactivado salvo --dart-define=REVEAL_VOTING_ENABLED=true.
+  static String revealVoteDestination(String gameId) => '/app/game/$gameId/vote';
+  static const bool revealVotingEnabled = bool.fromEnvironment('REVEAL_VOTING_ENABLED');
 
   // Configuración de timeouts
   static const Duration connectTimeout = Duration(seconds: 15);

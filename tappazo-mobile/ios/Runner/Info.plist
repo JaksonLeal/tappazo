@@ -66,5 +66,7 @@
 		<string>UIInterfaceOrientationLandscapeLeft</string>
 		<string>UIInterfaceOrientationLandscapeRight</string>
 	</array>
+	<key>NSCameraUsageDescription</key>
+	<string>Tappazo necesita la cámara para fotografiar tu tapa al revelar el número.</string>
 </dict>
 </plist>

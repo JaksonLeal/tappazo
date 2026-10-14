@@ -13,7 +13,7 @@ dependencies:
 
   # Red y comunicación
   dio: ^5.4.0
-  web_socket_channel: ^2.4.1
+  web_socket_channel: ^3.0.1
 
   # Autenticación y almacenamiento seguro
   google_sign_in: ^6.2.1
@@ -23,11 +23,12 @@ dependencies:
   flutter_riverpod: ^2.5.1
 
   # Audio en tiempo real (LiveKit)
-  livekit_client: ^2.0.4
+  livekit_client: ^2.5.0
 
   # UI y utilidades
   google_fonts: ^6.1.0
   intl: ^0.19.0
+  image_picker: ^1.2.1
 
 dev_dependencies:
   flutter_test:

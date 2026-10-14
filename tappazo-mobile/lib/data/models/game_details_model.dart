@@ -1,6 +1,7 @@
 import '../../domain/entities/game_details_entity.dart';
 import 'game_model.dart';
 import 'game_participant_model.dart';
+import 'round_model.dart';
 
 class GameDetailsModel extends GameDetailsEntity {
   const GameDetailsModel({
@@ -18,8 +19,7 @@ class GameDetailsModel extends GameDetailsEntity {
       participants: participantsJson
           .map((p) => GameParticipantModel.fromJson(p as Map<String, dynamic>))
           .toList(),
-      currentRound: json['currentRound'],
+      currentRound: RoundModel.tryParse(json['currentRound']),
     );
   }
 }
-

@@ -7,11 +7,14 @@ import '../../../domain/entities/game_mode.dart';
 import '../../providers/auth_providers.dart';
 import '../../providers/auth_state.dart';
 import '../../providers/game_providers.dart';
+import '../../providers/game_session_providers.dart';
 import '../../providers/game_state.dart';
 import '../../theme/colors.dart';
 import '../../theme/spacing.dart';
 import '../../theme/typography.dart';
+import '../../widgets/game/connection_badge.dart';
 import '../../widgets/tappazo_button.dart';
+import '../game/game_screen.dart';
 import '../mesa/mesa_screen.dart';
 
 class LobbyScreen extends ConsumerStatefulWidget {
@@ -42,17 +45,47 @@ class _LobbyScreenState extends ConsumerState<LobbyScreen> {
     super.dispose();
   }
 
+  bool _gameScreenOpen = false;
+
+  Future<void> _openGameScreen() async {
+    if (_gameScreenOpen || !mounted) return;
+    _gameScreenOpen = true;
+    await Navigator.of(context).push(
+      MaterialPageRoute(builder: (_) => GameScreen(gameId: widget.gameId)),
+    );
+    _gameScreenOpen = false;
+    if (mounted) {
+      ref.read(gameNotifierProvider.notifier).refreshGameDetails(widget.gameId);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final gameState = ref.watch(gameNotifierProvider);
     final authState = ref.watch(authNotifierProvider);
     final currentUserId = authState is Authenticated ? authState.user.id : '';
 
+    // Mantiene viva la conexión STOMP mientras se está en la sala (Sección 68).
+    final sessionProvider = gameSessionProvider(widget.gameId);
+    final session = ref.watch(sessionProvider);
+
+    // Cuando el backend inicia una ronda, se abre la pantalla de juego.
+    ref.listen<String?>(sessionProvider.select((s) => s.round?.isFinished == false ? s.round?.id : null),
+        (previous, next) {
+      if (next != null && next != previous) _openGameScreen();
+    });
+
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: AppBar(
         title: Text('SALA DE ESPERA', style: AppTypography.headlineSm),
         actions: [
+          Center(
+            child: ConnectionBadge(
+              status: session.connection,
+              onRetry: ref.read(sessionProvider.notifier).reconnect,
+            ),
+          ),
           IconButton(
             icon: const Icon(Icons.refresh_rounded),
             tooltip: 'Actualizar sala',
@@ -154,6 +187,16 @@ class _LobbyScreenState extends ConsumerState<LobbyScreen> {
             // Rol del usuario actual y estado de la partida
             _buildStatusHeader(game, isHost),
             const SizedBox(height: AppSpacing.lg),
+
+            // Acceso a la ronda en curso (Game.state == IN_PROGRESS)
+            if (game.isInProgress) ...[
+              TappazoButton(
+                text: 'Entrar a la ronda en curso',
+                icon: Icons.casino_rounded,
+                onPressed: _openGameScreen,
+              ),
+              const SizedBox(height: AppSpacing.lg),
+            ],
 
             // Panel de Configuración de la Bebida (Solo Host en LOBBY puede editar)
             _buildDrinkSettingsCard(context, game, isHost, isUpdatingSettings),
@@ -404,7 +447,7 @@ class _LobbyScreenState extends ConsumerState<LobbyScreen> {
             Text('Modalidad de juego', style: AppTypography.bodySm),
             const SizedBox(height: AppSpacing.xs),
             DropdownButtonFormField<GameMode>(
-              initialValue: _selectedMode ?? game.currentMode,
+              value: _selectedMode ?? game.currentMode,
               dropdownColor: AppColors.surfaceContainerHigh,
               items: GameMode.values.map((mode) {
                 return DropdownMenuItem(

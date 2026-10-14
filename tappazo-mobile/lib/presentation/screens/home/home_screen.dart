@@ -253,7 +253,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                     Text('Modalidad de Juego', style: AppTypography.bodySm),
                     const SizedBox(height: AppSpacing.xs),
                     DropdownButtonFormField<GameMode>(
-                      initialValue: selectedMode,
+                      value: selectedMode,
                       dropdownColor: AppColors.surfaceContainerHigh,
                       items: GameMode.values.map((mode) {
                         return DropdownMenuItem(
